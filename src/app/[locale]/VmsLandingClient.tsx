@@ -71,14 +71,12 @@ export default function VmsLandingClient() {
 
                     {/* Header */}
                     <div className="bg-[#111] px-10 py-10 text-center">
-                        <div className="inline-flex items-center justify-center w-12 h-12 border border-white/25 mb-5">
-                            <svg
-                                className="w-[22px] h-[22px] fill-white"
-                                viewBox="0 0 24 24"
-                                xmlns="http://www.w3.org/2000/svg"
-                            >
-                                <path d="M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82zM12 3L1 9l11 6 9-4.91V17h2V9L12 3z" />
-                            </svg>
+                        <div className="inline-flex items-center justify-center   mb-5">
+                            <img
+                                src="/lencana_sekolah.png"
+                                alt="School badge"
+                                className="w-[100px] h-auto object-contain"
+                            />
                         </div>
                         <p className="text-[9px] font-medium tracking-[0.28em] uppercase text-white/45 mb-2">
                             {t.landingSystemTag}
@@ -91,7 +89,7 @@ export default function VmsLandingClient() {
                         </h1>
                         <div className="w-8 h-px bg-white/20 mx-auto my-4" />
                         <p className="text-[10px] font-normal tracking-[0.2em] uppercase text-white/40">
-                            {t.landingSubtitle}
+                            SK SERI TELOK PARIT YAANI
                         </p>
                     </div>
 

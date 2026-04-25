@@ -12,7 +12,7 @@ export const translations: Record<
 		time: string;
 		plateNumber: string;
 
-		// Home page
+		// Starter basic page
 		title: string;
 		intro: string;
 		docsButton: string;
@@ -61,7 +61,7 @@ export const translations: Record<
 		time: "Time",
 		plateNumber: "Plate Number",
 
-		// Home page
+		// Starter basic page
 		title: "Welcome",
 		intro: "This site supports English and Malay. Choose your language below.",
 		docsButton: "Read our docs",
@@ -118,12 +118,14 @@ export const translations: Record<
 		time: "Masa",
 		plateNumber: "Nombor Plat",
 
+		// Starter basic page
 		title: "Selamat Datang",
 		intro: "Laman ini menyokong Bahasa Inggeris dan Bahasa Melayu. Pilih bahasa anda di bawah.",
 		docsButton: "Baca dokumentasi kami",
 		learnButton: "Belajar",
 		goToNext: "Pergi ke nextjs.org →",
 		editorHelp: "Mulakan dengan mengedit src/app/[locale]/page.tsx.",
+		
 		// Landing page
 		landingSystemTag: "Sistem Pengurusan Pelawat Sekolah",
 		landingTitle: "Daftar Masuk Pelawat",
@@ -138,11 +140,13 @@ export const translations: Record<
 		landingBadgeSecure: "Selamat",
 		landingBadgeLog: "Log Daftar Masuk",
 		landingBadgeTracking: "Jejak Pelawat",
+		
 		// Locale display
 		localeLabelEn: "EN",
 		localeNameEn: "English",
 		localeLabelMs: "BM",
 		localeNameMs: "Bahasa Melayu",
+		
 		// Appointment page
 		appointmentTitle: "Jadual Temu Janji",
 		appointmentSubtitle: "Paparan mingguan semua tempahan",
