@@ -8,8 +8,18 @@ export const translations: Record<
 		fName: string;
 		pNumber: string;
 		email: string;
+		visitationReason: string;
+		visitationReasonPlaceholder: string;
 		date: string;
 		time: string;
+		timeSelectDateFirst: string;
+		timeFromLabel: string;
+		timeToLabel: string;
+		timeInvalidRange: string;
+		timeOverlapsBooking: string;
+		timeBookedSlotsLabel: string;
+		timeDoneButton: string;
+		carPlateCheckBoxLabel: string;
 		plateNumber: string;
 
 		// Starter basic page
@@ -57,8 +67,19 @@ export const translations: Record<
 		fName: "Full Name",
 		pNumber: "Phone Number",
 		email: "Email Address",
+		visitationReason: "Reason for Visit",
+		visitationReasonPlaceholder: "Tell us why you are visiting",
 		date: "Date",
 		time: "Time",
+		timeSelectDateFirst: "Select a date first, then choose your time range.",
+		timeFromLabel: "From",
+		timeToLabel: "To",
+		timeInvalidRange: '"To" time must be later than "From" time.',
+		timeOverlapsBooking:
+			"This time range overlaps an existing booking. Please choose a different time.",
+		timeBookedSlotsLabel: "Booked slots",
+		timeDoneButton: "Done",
+		carPlateCheckBoxLabel: "I have a vehicle to park",
 		plateNumber: "Plate Number",
 
 		// Starter basic page
@@ -114,8 +135,19 @@ export const translations: Record<
 		fName: "Nama Penuh",
 		pNumber: "Nombor Telefon",
 		email: "Alamat Emel",
+		visitationReason: "Tujuan Lawatan",
+		visitationReasonPlaceholder: "Nyatakan sebab anda melawat",
 		date: "Tarikh",
 		time: "Masa",
+		timeSelectDateFirst: "Pilih tarikh dahulu, kemudian pilih julat masa anda.",
+		timeFromLabel: "Dari",
+		timeToLabel: "Hingga",
+		timeInvalidRange: "Masa \"Hingga\" mesti lebih lewat daripada masa \"Dari\".",
+		timeOverlapsBooking:
+			"Julat masa ini bertindih dengan tempahan sedia ada. Sila pilih masa lain.",
+		timeBookedSlotsLabel: "Slot ditempah",
+		timeDoneButton: "Selesai",
+		carPlateCheckBoxLabel: "Saya mempunyai kenderaan untuk diparkir",
 		plateNumber: "Nombor Plat",
 
 		// Starter basic page
