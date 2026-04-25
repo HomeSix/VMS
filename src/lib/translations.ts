@@ -4,12 +4,22 @@ export type Locale = (typeof locales)[number];
 export const translations: Record<
 	Locale,
 	{
+		// Booking Page
+		fName: string;
+		pNumber: string;
+		email: string;
+		date: string;
+		time: string;
+		plateNumber: string;
+
+		// Home page
 		title: string;
 		intro: string;
 		docsButton: string;
 		learnButton: string;
 		goToNext: string;
 		editorHelp: string;
+
 		// Landing page
 		landingSystemTag: string;
 		landingTitle: string;
@@ -24,11 +34,13 @@ export const translations: Record<
 		landingBadgeSecure: string;
 		landingBadgeLog: string;
 		landingBadgeTracking: string;
+
 		// Locale display
 		localeLabelEn: string;
 		localeNameEn: string;
 		localeLabelMs: string;
 		localeNameMs: string;
+
 		// Appointment page
 		appointmentTitle: string;
 		appointmentSubtitle: string;
@@ -41,12 +53,22 @@ export const translations: Record<
 	}
 > = {
 	en: {
+		// Booking page
+		fName: "Full Name",
+		pNumber: "Phone Number",
+		email: "Email Address",
+		date: "Date",
+		time: "Time",
+		plateNumber: "Plate Number",
+
+		// Home page
 		title: "Welcome",
 		intro: "This site supports English and Malay. Choose your language below.",
 		docsButton: "Read our docs",
 		learnButton: "Learn",
 		goToNext: "Go to nextjs.org →",
 		editorHelp: "Get started by editing src/app/[locale]/page.tsx.",
+
 		// Landing page
 		landingSystemTag: "School Visitor Management",
 		landingTitle: "Visitor Check-In",
@@ -61,11 +83,13 @@ export const translations: Record<
 		landingBadgeSecure: "Secure",
 		landingBadgeLog: "Sign-In Log",
 		landingBadgeTracking: "Visitor Tracking",
+
 		// Locale display
 		localeLabelEn: "EN",
 		localeNameEn: "English",
 		localeLabelMs: "BM",
 		localeNameMs: "Bahasa Melayu",
+
 		// Appointment page
 		appointmentTitle: "Appointment Schedule",
 		appointmentSubtitle: "Weekly timetable view of all bookings",
@@ -86,6 +110,14 @@ export const translations: Record<
 		],
 	},
 	my: {
+		// Booking page
+		fName: "Nama Penuh",
+		pNumber: "Nombor Telefon",
+		email: "Alamat Emel",
+		date: "Tarikh",
+		time: "Masa",
+		plateNumber: "Nombor Plat",
+
 		title: "Selamat Datang",
 		intro: "Laman ini menyokong Bahasa Inggeris dan Bahasa Melayu. Pilih bahasa anda di bawah.",
 		docsButton: "Baca dokumentasi kami",
