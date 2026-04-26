@@ -195,10 +195,10 @@ export function AppSidebar() {
           />
           {!collapsed && (
             <div className="text-center">
-              <h3 className="text-xs font-bold text-foreground leading-tight">
+              <h3 className="text-xs font-bold  leading-tight">
                 SK SERI TELOK
               </h3>
-              <h3 className="text-xs font-bold text-foreground leading-tight">
+              <h3 className="text-xs font-bold  leading-tight">
                 PARIT YAANI
               </h3>
             </div>
