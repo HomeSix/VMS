@@ -162,7 +162,7 @@ export function AppSidebar() {
                   "ml-auto rounded-full px-2 py-0.5 text-xs",
                   item.active
                     ? "bg-white text-blue-500"
-                    : "bg-primary text-primary-foreground"
+                    : "bg-destructive text-primary-foreground"
                 )}>
                   {item.badge}
                 </span>
