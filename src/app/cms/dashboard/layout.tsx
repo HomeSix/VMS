@@ -125,7 +125,7 @@ export default function DashboardLayout({
                   <div className="w-8 h-8 rounded-full bg-muted animate-pulse" />
                 ) : (
                   <>
-                    <span className="hidden sm:block truncate max-w-[140px] text-sm text-muted-foreground">
+                    <span className="hidden sm:block truncate max-w-[350px] text-sm text-muted-foreground">
                       Welcome back, <span className="font-medium text-foreground">{userName}</span>
                     </span>
                     <img
