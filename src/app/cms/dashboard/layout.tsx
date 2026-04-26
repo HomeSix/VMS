@@ -16,12 +16,12 @@ export default function DashboardLayout({
   const [userName, setUserName] = useState<string>("");
   const [userAvatar, setUserAvatar] = useState<string>("");
   const [loading, setLoading] = useState(true);
-  const supabase = createClient();
   const router = useRouter();
 
   useEffect(() => {
     const getUser = async () => {
       try {
+        const supabase = createClient();
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
           // Try to get user's display name, fallback to email

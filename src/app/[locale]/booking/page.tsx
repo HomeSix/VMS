@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useMemo, useState } from "react"
+import { useState } from "react"
 import { useParams, useSearchParams } from "next/navigation"
 
 import { translations, type Locale } from "@/lib/translations"
@@ -47,7 +47,6 @@ function formatDateForDisplay(dateKey: string, locale: Locale) {
 const DIAL_CODES = ["+60"]
 
 export default function BookingPage() {
-  const supabase = useMemo(() => createClient(), [])
   const params = useParams<{ locale?: string }>()
   const searchParams = useSearchParams()
 
@@ -106,6 +105,8 @@ export default function BookingPage() {
     }
 
     setIsSubmitting(true)
+
+    const supabase = createClient()
 
     const { error } = await supabase.from("bookings").insert({
       full_name: fullNameValue.trim(),

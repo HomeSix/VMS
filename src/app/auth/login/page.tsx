@@ -19,7 +19,6 @@ import { Label } from "@/components/ui/label";
 
 export default function CmsLoginPage() {
   const router = useRouter();
-  const supabase = createClient();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -30,6 +29,8 @@ export default function CmsLoginPage() {
     e.preventDefault();
     setLoading(true);
     setError(null);
+
+    const supabase = createClient();
 
     const { error } = await supabase.auth.signInWithPassword({
       email,
@@ -49,6 +50,8 @@ export default function CmsLoginPage() {
   const handleGoogleLogin = async () => {
     setLoading(true);
     setError(null);
+
+    const supabase = createClient();
 
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: "google",

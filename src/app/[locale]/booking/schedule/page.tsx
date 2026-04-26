@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useState } from "react"
 import { useParams, useSearchParams } from "next/navigation"
 
 import { translations, type Locale } from "@/lib/translations"
@@ -54,7 +54,6 @@ const TIME_SLOTS = Array.from({ length: (END_MINUTE - START_MINUTE) / SLOT_STEP 
 type TimeRange = { start: string; end: string }
 
 export default function BookingSchedulePage() {
-  const supabase = useMemo(() => createClient(), [])
   const params = useParams<{ locale?: string }>()
   const searchParams = useSearchParams()
 
@@ -92,6 +91,8 @@ export default function BookingSchedulePage() {
         return
       }
 
+      const supabase = createClient()
+
       const { data, error } = await supabase
         .from("bookings")
         .select("start_time, end_time")
@@ -114,7 +115,7 @@ export default function BookingSchedulePage() {
     }
 
     void loadBookedSlots()
-  }, [date, supabase])
+  }, [date])
 
   const dateKey = date ? toDateKey(date) : null
 
