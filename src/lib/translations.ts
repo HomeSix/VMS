@@ -19,6 +19,16 @@ export const translations: Record<
 		timeOverlapsBooking: string;
 		timeBookedSlotsLabel: string;
 		timeDoneButton: string;
+		scheduleTitle: string;
+		scheduleSubtitle: string;
+		scheduleSelectedDate: string;
+		scheduleSelectedTime: string;
+		scheduleDragHint: string;
+		scheduleBlockedHint: string;
+		scheduleNoSlots: string;
+		scheduleContinueButton: string;
+		bookingChangeScheduleButton: string;
+		bookingPickScheduleFirst: string;
 		carPlateCheckBoxLabel: string;
 		plateNumber: string;
 
@@ -81,6 +91,16 @@ export const translations: Record<
 			"This time range overlaps an existing booking. Please choose a different time.",
 		timeBookedSlotsLabel: "Booked slots",
 		timeDoneButton: "Done",
+		scheduleTitle: "Pick Date & Time",
+		scheduleSubtitle: "Choose your visit date, then drag across time slots.",
+		scheduleSelectedDate: "Selected date",
+		scheduleSelectedTime: "Selected time",
+		scheduleDragHint: "Tip: first click selects start time, second click selects end time.",
+		scheduleBlockedHint: "Tip: greyed out slots are already booked.",
+		scheduleNoSlots: "No available slots for this date.",
+		scheduleContinueButton: "Continue to Personal Information",
+		bookingChangeScheduleButton: "Change Date & Time",
+		bookingPickScheduleFirst: "Please pick date and time first.",
 		carPlateCheckBoxLabel: "I have a vehicle to park",
 		plateNumber: "Plate Number",
 
@@ -151,6 +171,16 @@ export const translations: Record<
 			"Julat masa ini bertindih dengan tempahan sedia ada. Sila pilih masa lain.",
 		timeBookedSlotsLabel: "Slot ditempah",
 		timeDoneButton: "Selesai",
+		scheduleTitle: "Pilih Tarikh & Masa",
+		scheduleSubtitle: "Pilih tarikh lawatan, kemudian seret merentasi slot masa.",
+		scheduleSelectedDate: "Tarikh dipilih",
+		scheduleSelectedTime: "Masa dipilih",
+		scheduleDragHint: "Tip: klik pertama pilih masa mula, klik kedua pilih masa tamat.",
+		scheduleBlockedHint: "Tip: slot berwarna kelabu bermaksud sudah ditempah.",
+		scheduleNoSlots: "Tiada slot tersedia untuk tarikh ini.",
+		scheduleContinueButton: "Teruskan ke Maklumat Peribadi",
+		bookingChangeScheduleButton: "Tukar Tarikh & Masa",
+		bookingPickScheduleFirst: "Sila pilih tarikh dan masa dahulu.",
 		carPlateCheckBoxLabel: "Saya mempunyai kenderaan untuk diparkir",
 		plateNumber: "Nombor Plat",
 

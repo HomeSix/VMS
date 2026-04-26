@@ -24,7 +24,7 @@ export default function Page() {
 
     const handleBooking = () => {
         if (!selected) return;
-        router.push(`/${selected}/booking`);
+        router.push(`/${selected}/booking/schedule`);
     };
 
     const handleAppointment = () => {
