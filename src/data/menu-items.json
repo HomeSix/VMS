@@ -1,0 +1,50 @@
+[
+  { 
+    "label": "Dashboard", 
+    "icon": "LayoutDashboard",
+    "href": "/cms/dashboard",
+    "badge": "New",
+    "active": true
+  },
+  {
+    "label": "Analytics",
+    "icon": "BarChart3",
+    "submenu": [
+      { "label": "Overview", "icon": "TrendingUp", "href": "/analytics/overview" },
+      { "label": "Reports", "icon": "FileText", "href": "/analytics/reports" },
+      { "label": "Real-time", "icon": "Globe", "href": "/analytics/realtime" }
+    ]
+  },
+  {
+    "label": "Projects",
+    "icon": "FolderOpen",
+    "submenu": [
+      { "label": "All Projects", "icon": "Package", "href": "/projects" },
+      { "label": "Active", "icon": "Calendar", "href": "/projects/active" },
+      { "label": "Archived", "icon": "Archive", "href": "/projects/archived" }
+    ]
+  },
+  {
+    "label": "Customers",
+    "icon": "Users",
+    "submenu": [
+      { "label": "All Customers", "icon": "Users", "href": "/customers" },
+      { "label": "Segments", "icon": "Shield", "href": "/customers/segments" }
+    ]
+  },
+  {
+    "label": "Sales",
+    "icon": "ShoppingCart",
+    "submenu": [
+      { "label": "Orders", "icon": "ShoppingCart", "href": "/sales/orders" },
+      { "label": "Payments", "icon": "CreditCard", "href": "/sales/payments" },
+      { "label": "Invoices", "icon": "FileText", "href": "/sales/invoices" }
+    ]
+  },
+  {
+    "label": "Messages",
+    "icon": "Mail",
+    "href": "/messages",
+    "badge": "3"
+  }
+]
