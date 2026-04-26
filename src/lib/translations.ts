@@ -60,6 +60,8 @@ export const translations: Record<
 		appointmentBooked: string;
 		appointmentDays: string[];
 		appointmentTimeSlots: string[];
+
+		detectStaff: string;
 	}
 > = {
 	en: {
@@ -129,6 +131,8 @@ export const translations: Record<
 			"14:00 - 15:00",
 			"15:00 - 16:00",
 		],
+
+		detectStaff: "Are you staff?",
 	},
 	my: {
 		// Booking page
@@ -197,5 +201,6 @@ export const translations: Record<
 			"14:00 - 15:00",
 			"15:00 - 16:00",
 		],
+		detectStaff: "Adakah anda staf?",
 	},
 };
