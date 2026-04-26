@@ -50,8 +50,17 @@
 	/**
 	 * Environment Variables
 	 * https://developers.cloudflare.com/workers/wrangler/configuration/#environment-variables
-	 * Note: Use secrets to store sensitive data.
-	 * https://developers.cloudflare.com/workers/configuration/secrets/
 	 */
-	// "vars": {  "MY_VARIABLE": "production_value" }
+	"vars": {
+		"NEXT_PUBLIC_SUPABASE_URL": "https://vlmeyneofiyulqymljyp.supabase.co",
+		"NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_n97HJKgNjApgv2iv6iM_Lw_fqLcj5Dh"
+	},
+	/**
+	 * Secrets
+	 * https://developers.cloudflare.com/workers/configuration/secrets/
+	 * Store sensitive data using: wrangler secret put SUPABASE_SECRET_KEY
+	 */
+	"secret_variables": [
+		"SUPABASE_SECRET_KEY"
+	]
 }
