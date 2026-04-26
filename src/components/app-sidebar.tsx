@@ -98,10 +98,10 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const router = useRouter();
+  const supabase = createClient();
 
   const handleLogout = async () => {
     try {
-      const supabase = createClient();
       await supabase.auth.signOut();
       router.push("/auth/login");
     } catch (error) {

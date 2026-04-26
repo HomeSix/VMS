@@ -15,29 +15,46 @@ export default function DashboardLayout({
 }) {
   const [userName, setUserName] = useState<string>("");
   const [userAvatar, setUserAvatar] = useState<string>("");
+  const [userRole, setUserRole] = useState<string>("");
   const [loading, setLoading] = useState(true);
+  const supabase = createClient();
   const router = useRouter();
 
   useEffect(() => {
     const getUser = async () => {
       try {
-        const supabase = createClient();
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
-          // Try to get user's display name, fallback to email
-          const name = user.user_metadata?.full_name || 
-                      user.user_metadata?.name || 
-                      user.email?.split('@')[0] || 
-                      'User';
+          const name = user.user_metadata?.full_name ||
+            user.user_metadata?.name ||
+            user.email?.split('@')[0] ||
+            'User';
           setUserName(name);
-          
-          // Get user avatar from metadata or identities
-          const avatar = user.user_metadata?.avatar_url || 
-                        user.user_metadata?.picture ||
-                        user.identities?.[0]?.identity_data?.avatar_url ||
-                        user.identities?.[0]?.identity_data?.picture ||
-                        '';
+
+          const avatar = user.user_metadata?.avatar_url ||
+            user.user_metadata?.picture ||
+            user.identities?.[0]?.identity_data?.avatar_url ||
+            user.identities?.[0]?.identity_data?.picture ||
+            '';
           setUserAvatar(avatar);
+
+          console.log('Fetching role for user UUID:', user.id);
+          const { data: userData, error } = await supabase
+            .from('system_user')
+            .select('role')
+            .eq('id', user.id)
+            .maybeSingle();
+
+          console.log('Role query result:', { userData, error });
+
+          if (error) {
+            console.error('Error fetching user role:', error);
+          } else if (userData?.role) {
+            setUserRole(userData.role);
+            console.log('User role set to:', userData.role);
+          } else {
+            console.log('No role found for user');
+          }
         }
       } catch (error) {
         console.error('Error fetching user:', error);
@@ -54,14 +71,27 @@ export default function DashboardLayout({
       <div className="flex min-h-screen w-full bg-muted/30">
         <AppSidebar />
 
-        <main className="flex-1 p-6 space-y-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <SidebarTrigger />
-              
-            </div>
-            
+        <main className="flex-1 p-3 sm:p-6 space-y-6 min-w-0">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
             <div className="flex items-center gap-2">
+              <SidebarTrigger />
+              {!loading && userRole && (
+                <div className={`px-2 py-1 rounded-full text-xs font-semibold text-white ${userRole === 'editor'
+                    ? 'bg-orange-600'
+                    : userRole === 'viewer'
+                      ? 'bg-green-600'
+                      : userRole === 'admin'
+                        ? 'bg-yellow-600'
+                        : userRole === 'staff'
+                          ? 'bg-red-600'
+                          : 'bg-gray-600'
+                  }`}>
+                  {userRole.toUpperCase()}
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center gap-1 sm:gap-2 ml-auto">
               <Button
                 variant="ghost"
                 size="sm"
@@ -71,7 +101,7 @@ export default function DashboardLayout({
                 <Bell className="h-4 w-4" />
                 <span className="sr-only">Notifications</span>
               </Button>
-              
+
               <Button
                 variant="ghost"
                 size="sm"
@@ -80,7 +110,7 @@ export default function DashboardLayout({
                 <HelpCircle className="h-4 w-4" />
                 <span className="sr-only">Help & Support</span>
               </Button>
-              
+
               <Button
                 variant="ghost"
                 size="sm"
@@ -89,26 +119,23 @@ export default function DashboardLayout({
                 <Settings className="h-4 w-4" />
                 <span className="sr-only">Settings</span>
               </Button>
+
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 {loading ? (
-                  <>
-                    <div className="w-8 h-8 rounded-full bg-muted animate-pulse"></div>
-                    <span>Welcome back</span>
-                  </>
+                  <div className="w-8 h-8 rounded-full bg-muted animate-pulse" />
                 ) : (
                   <>
-                    <span>Welcome back, {userName}</span>
-                    {userAvatar ? (
-                      <img 
-                        src={userAvatar} 
-                        alt={userName} 
-                        className="w-8 h-8 rounded-full object-cover border-2 border-background"
-                      />
-                    ) : (
-                      <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-sm font-medium">
-                        {userName.charAt(0).toUpperCase()}
-                      </div>
-                    )}
+                    <span className="hidden sm:block truncate max-w-[140px] text-sm text-muted-foreground">
+                      Welcome back, <span className="font-medium text-foreground">{userName}</span>
+                    </span>
+                    <img
+                      src={userAvatar || "/profile_default.png"}
+                      alt={userName}
+                      className="w-8 h-8 rounded-full object-cover border-2 border-background flex-shrink-0"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = "/profile_default.png";
+                      }}
+                    />
                   </>
                 )}
               </div>
