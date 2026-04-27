@@ -2,6 +2,9 @@ import { redirect } from "next/navigation";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { StatCard } from "@/components/ui/stat-card";
+
+export const dynamic = 'force-dynamic';
+
 async function getAuthenticatedUser() {
     const cookieStore = await cookies();
     const supabase = createServerClient(
