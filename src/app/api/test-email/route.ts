@@ -3,7 +3,8 @@ import { emailService } from '@/lib/email';
 
 export async function POST(request: NextRequest) {
   try {
-    const { type, to, ...params } = await request.json();
+    const body = await request.json() as { type?: string; to?: string; [key: string]: unknown };
+    const { type, to, ...params } = body;
 
     // Validate required fields
     if (!to) {
