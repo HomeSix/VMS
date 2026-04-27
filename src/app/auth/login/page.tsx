@@ -20,10 +20,78 @@ import { Label } from "@/components/ui/label";
 export default function CmsLoginPage() {
   const router = useRouter();
 
+  const ADMIN_ROLE = "admin";
+  const APPROVED_STATUS = "approved";
+  const PENDING_STATUS = "pending";
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  const ensureUserStatus = async (
+    supabase: ReturnType<typeof createClient>
+  ) => {
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      throw new Error("Unable to verify your account. Please try again.");
+    }
+
+    const { data: existing, error: lookupError } = await supabase
+      .from("system_user")
+      .select("role, status")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (lookupError) {
+      throw new Error("Unable to verify your access. Please try again.");
+    }
+
+    if (!existing) {
+      const fullName =
+        user.user_metadata?.full_name ||
+        user.user_metadata?.name ||
+        user.email?.split("@")[0] ||
+        "User";
+      const avatarUrl =
+        user.user_metadata?.avatar_url ||
+        user.user_metadata?.picture ||
+        user.identities?.[0]?.identity_data?.avatar_url ||
+        user.identities?.[0]?.identity_data?.picture ||
+        null;
+
+      const { data: inserted, error: insertError } = await supabase
+        .from("system_user")
+        .insert({
+          id: user.id,
+          email: user.email,
+          full_name: fullName,
+          avatar_url: avatarUrl,
+          role: "pending",
+          status: PENDING_STATUS,
+        })
+        .select("role, status")
+        .single();
+
+      if (insertError) {
+        throw new Error("Unable to register your account. Please try again.");
+      }
+
+      return {
+        role: inserted?.role ?? "pending",
+        status: inserted?.status ?? PENDING_STATUS,
+      };
+    }
+
+    return {
+      role: existing.role ?? "pending",
+      status: existing.status ?? PENDING_STATUS,
+    };
+  };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -37,14 +105,29 @@ export default function CmsLoginPage() {
       password,
     });
 
-    setLoading(false);
-
     if (error) {
+      setLoading(false);
       setError(error.message);
       return;
     }
 
-    router.push("/cms/dashboard");
+    try {
+      const { role, status } = await ensureUserStatus(supabase);
+      setLoading(false);
+
+      if (role === ADMIN_ROLE || status === APPROVED_STATUS) {
+        router.push("/cms/dashboard");
+      } else {
+        router.push("/cms/staff-approvals");
+      }
+    } catch (roleError) {
+      setLoading(false);
+      setError(
+        roleError instanceof Error
+          ? roleError.message
+          : "Unable to verify your account."
+      );
+    }
   };
 
   const handleGoogleLogin = async () => {

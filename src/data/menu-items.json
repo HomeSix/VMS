@@ -6,14 +6,12 @@
     "badge": "New",
     "active": true
   },
-  {
-    "label": "Analytics",
-    "icon": "BarChart3",
-    "submenu": [
-      { "label": "Overview", "icon": "TrendingUp", "href": "/analytics/overview" },
-      { "label": "Reports", "icon": "FileText", "href": "/analytics/reports" },
-      { "label": "Real-time", "icon": "Globe", "href": "/analytics/realtime" }
-    ]
+  { 
+    "label": "Staff Approvals", 
+    "icon": "UserCheck",
+    "href": "/cms/staff-approvals",
+    "badge": "New",
+    "active": true
   },
   {
     "label": "Projects",
