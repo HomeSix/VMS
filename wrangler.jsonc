@@ -58,12 +58,6 @@
 	/**
 	 * Secrets
 	 * https://developers.cloudflare.com/workers/configuration/secrets/
-	 * Store sensitive data using: wrangler secret put <SECRET_NAME>
-	 * 
-	 * Required secrets for email functionality:
-	 * wrangler secret put SMTP_USER
-	 * wrangler secret put SMTP_PASS
-	 * wrangler secret put SMTP_FROM
-	 * wrangler secret put SUPABASE_SECRET_KEY
+	 * Store sensitive data using: wrangler secret put SUPABASE_SECRET_KEY
 	 */
 }
