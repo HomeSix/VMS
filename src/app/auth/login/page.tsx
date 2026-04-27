@@ -226,6 +226,14 @@ export default function CmsLoginPage() {
                 Login with Google
               </Button>
             </CardFooter>
+           <button
+            onClick={() => window.location.href = '/'}
+            className="mx-auto block text-sm text-center mt-4 text-grey-600 hover:text-grey-800 hover:underline transition"
+            style={{ fontSize: 12, fontFamily: "'Inter', sans-serif" }}
+          >
+            Are you a visitor? Click here.
+          </button>
+
           </form>
         </CardContent>
       </Card>
