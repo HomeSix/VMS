@@ -3,15 +3,12 @@
     "label": "Dashboard", 
     "icon": "LayoutDashboard",
     "href": "/cms/dashboard",
-    "badge": "New",
-    "active": true
+    "badge": "New"
   },
   { 
     "label": "Staff Approvals", 
     "icon": "UserCheck",
-    "href": "/cms/staff-approvals",
-    "badge": "New",
-    "active": true
+    "href": "/cms/staff-approvals"
   },
   {
     "label": "Projects",

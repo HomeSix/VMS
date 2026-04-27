@@ -2,6 +2,7 @@ import {
   LayoutDashboard,
   FileText,
   Users,
+  UserCheck,
   Settings,
   LogOut,
   ChevronRight,
@@ -56,7 +57,7 @@ import { ChevronDown } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { createClient } from "@/lib/client";
 import menuItems from "@/data/menu-items.json";
 
@@ -64,6 +65,7 @@ const iconMap: { [key: string]: any } = {
   LayoutDashboard,
   FileText,
   Users,
+  UserCheck,
   Settings,
   ChevronRight,
   FolderOpen,
@@ -98,8 +100,10 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const router = useRouter();
+  const pathname = usePathname();
   const supabase = createClient();
 
+  
   const handleLogout = async () => {
     try {
       await supabase.auth.signOut();
@@ -115,6 +119,13 @@ export function AppSidebar() {
   };
 
   const renderMenuItem = (item: any, index: number) => {
+    const isActive = item.href ? pathname === item.href : false;
+    
+    // Debug logging to understand the issue
+    if (item.href && (item.href === "/cms/dashboard" || item.href === "/cms/staff-approvals")) {
+      console.log(`Menu item: ${item.label}, href: ${item.href}, pathname: ${pathname}, isActive: ${isActive}`);
+    }
+
     if (item.submenu) {
       return (
         <DropdownMenu key={index}>
@@ -150,17 +161,17 @@ export function AppSidebar() {
           onClick={() => item.href && handleNavigation(item.href)}
           className={cn(
             "group/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md px-2 py-1 text-sm font-medium hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground peer/menu-button cursor-pointer",
-            item.active && "bg-blue-500 text-white hover:bg-blue-600 focus:bg-blue-600"
+            isActive && "bg-blue-500 text-white hover:bg-blue-600 focus:bg-blue-600"
           )}
         >
-          <item.icon className={cn("h-4 w-4", item.active && "text-white")} />
+          <item.icon className={cn("h-4 w-4", isActive && "text-white")} />
           {!collapsed && (
             <>
               <span className="ml-2 flex-1 text-left">{item.label}</span>
               {item.badge && (
                 <span className={cn(
                   "ml-auto rounded-full px-2 py-0.5 text-xs",
-                  item.active
+                  isActive
                     ? "bg-white text-blue-500"
                     : "bg-destructive text-primary-foreground"
                 )}>
@@ -219,8 +230,6 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-
-       
       </SidebarContent>
 
       <SidebarFooter className="p-3 border-t border-sidebar-border">

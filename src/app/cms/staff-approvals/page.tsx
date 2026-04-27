@@ -27,21 +27,21 @@ import {
 import { StatCard } from "@/components/ui/stat-card";
 
 const ADMIN_ROLE = "admin";
-const PENDING_STATUS = "pending";
-const APPROVED_STATUS = "approved";
+const PENDING_STATUS = false;
+const APPROVED_STATUS = true;
 
 type StaffRecord = {
   id: string;
   email: string | null;
   full_name: string | null;
   avatar_url: string | null;
-  status: string | null;
+  is_active: boolean | null;
 };
 
 export default function StaffApprovalsPage() {
   const [loading, setLoading] = useState(true);
   const [currentRole, setCurrentRole] = useState<string>("");
-  const [currentStatus, setCurrentStatus] = useState<string>(PENDING_STATUS);
+  const [isActive, setIsActive] = useState<boolean>(PENDING_STATUS);
   const [currentEmail, setCurrentEmail] = useState<string>("");
   const [rows, setRows] = useState<StaffRecord[]>([]);
   const [search, setSearch] = useState("");
@@ -62,10 +62,10 @@ export default function StaffApprovalsPage() {
   }, [rows, search]);
 
   const pendingCount = rows.filter(
-    (row) => row.status === PENDING_STATUS
+    (row) => row.is_active === PENDING_STATUS
   ).length;
   const approvedCount = rows.filter(
-    (row) => row.status === APPROVED_STATUS
+    (row) => row.is_active === APPROVED_STATUS
   ).length;
 
   const refreshStaff = useCallback(async () => {
@@ -73,9 +73,9 @@ export default function StaffApprovalsPage() {
 
     const { data, error: fetchError } = await supabase
       .from("system_user")
-      .select("id, email, full_name, avatar_url, status")
-      .in("status", [PENDING_STATUS, APPROVED_STATUS])
-      .order("status", { ascending: true });
+      .select("id, email, full_name, avatar_url, is_active")
+      .in("is_active", [PENDING_STATUS, APPROVED_STATUS])
+      .order("is_active", { ascending: true });
 
     if (fetchError) {
       setError(fetchError.message);
@@ -117,12 +117,12 @@ export default function StaffApprovalsPage() {
 
     const { data: existing, error: lookupError } = await supabase
       .from("system_user")
-      .select("role, status")
+      .select("role, is_active")
       .eq("id", user.id)
       .maybeSingle();
 
     let role = existing?.role ?? "";
-    let status = existing?.status ?? PENDING_STATUS;
+    let active = existing?.is_active ?? PENDING_STATUS;
 
     if (!existing && !lookupError) {
       const { data: inserted, error: insertError } = await supabase
@@ -132,37 +132,37 @@ export default function StaffApprovalsPage() {
           email: user.email,
           full_name: profileName,
           avatar_url: profileAvatar,
-          status: PENDING_STATUS,
+          is_active: PENDING_STATUS,
         })
-        .select("role, status")
+        .select("role, is_active")
         .single();
 
       if (insertError) {
         setError("Unable to register your account. Please contact support.");
       } else {
         role = inserted?.role ?? role;
-        status = inserted?.status ?? status;
+        active = inserted?.is_active ?? active;
       }
     }
 
     setCurrentRole(role);
-    setCurrentStatus(status);
+    setIsActive(active);
 
     if (role === ADMIN_ROLE) {
       await refreshStaff();
     }
 
     setLoading(false);
-    return { role, status };
+    return { role, is_active: active };
   }, [refreshStaff, supabase]);
 
-  const updateStatus = useCallback(async (id: string, status: string) => {
+  const updateStatus = useCallback(async (id: string, value: boolean) => {
     setBusyId(id);
     setError(null);
 
     const { error: updateError } = await supabase
       .from("system_user")
-      .update({ status })
+      .update({ is_active: value })
       .eq("id", id);
 
     if (updateError) {
@@ -180,7 +180,7 @@ export default function StaffApprovalsPage() {
 
   const handleCheckStatus = useCallback(async () => {
     const context = await loadContext();
-    if (context?.status === APPROVED_STATUS) {
+    if (context?.is_active === APPROVED_STATUS) {
       router.replace("/cms/dashboard");
     }
   }, [loadContext, router]);
@@ -202,16 +202,16 @@ export default function StaffApprovalsPage() {
   }
 
   if (currentRole !== ADMIN_ROLE) {
-    const isApproved = currentStatus === APPROVED_STATUS;
+    const approved = isActive === APPROVED_STATUS;
     return (
       <div className="space-y-6">
         <Card>
           <CardHeader>
             <CardTitle>
-              {isApproved ? "Access approved" : "Approval pending"}
+              {approved ? "Access approved" : "Approval pending"}
             </CardTitle>
             <CardDescription>
-              {isApproved
+              {approved
                 ? "Your staff access is active. You can continue to the dashboard."
                 : "Your account is awaiting admin approval. Please check back soon."}
             </CardDescription>
@@ -223,8 +223,8 @@ export default function StaffApprovalsPage() {
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-3">
-              <Badge variant={isApproved ? "secondary" : "outline"}>
-                {isApproved ? "Approved" : "Pending"}
+              <Badge variant={approved ? "secondary" : "outline"}>
+                {approved ? "Approved" : "Pending"}
               </Badge>
               <span className="text-sm text-muted-foreground">
                 Signed in as {currentEmail || "staff"}
@@ -234,7 +234,7 @@ export default function StaffApprovalsPage() {
               <p className="mt-4 text-sm text-destructive font-medium">{error}</p>
             )}
           </CardContent>
-          {isApproved && (
+          {approved && (
             <CardFooter className="border-t">
               <Button onClick={() => router.push("/cms/dashboard")}>
                 Go to dashboard
@@ -315,7 +315,7 @@ export default function StaffApprovalsPage() {
                 {filteredRows.map((row) => {
                   const displayName =
                     row.full_name || row.email?.split("@")[0] || "Staff";
-                  const isPending = row.status === PENDING_STATUS;
+                  const isPending = row.is_active === PENDING_STATUS;
 
                   return (
                     <TableRow key={row.id}>

@@ -79,16 +79,16 @@ export default function CmsLayout({
     getUser();
   }, [supabase]);
 
+  const isApproved = userRole === ADMIN_ROLE || userStatus === APPROVED_STATUS;
+  const isStaffApprovals = pathname === "/cms/staff-approvals";
+  const canViewPage = isStaffApprovals || isApproved;
+
   useEffect(() => {
     if (loading) return;
-    const isApproved =
-      userRole === ADMIN_ROLE || userStatus === APPROVED_STATUS;
-    const isStaffApprovals = pathname === "/cms/staff-approvals";
-
     if (!isApproved && !isStaffApprovals) {
       router.replace("/cms/staff-approvals");
     }
-  }, [loading, userRole, userStatus, pathname, router]);
+  }, [loading, isApproved, isStaffApprovals, router]);
 
   return (
     <SidebarProvider>
@@ -176,7 +176,15 @@ export default function CmsLayout({
               </div>
             </div>
 
-            <div className="flex-1 space-y-6">{children}</div>
+            <div className="flex-1 space-y-6">
+              {loading ? (
+                <div className="flex items-center justify-center h-40">
+                  <div className="w-6 h-6 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+                </div>
+              ) : canViewPage ? (
+                children
+              ) : null}
+            </div>
 
             <footer className="border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 -mx-3 sm:-mx-6 px-4 py-4 mt-6">
               <div className="flex items-center justify-center text-sm text-muted-foreground">
