@@ -13,10 +13,19 @@ import {
   InputGroupAddon,
   InputGroupInput,
 } from "@/components/ui/input-group"
+
+import {
+  Command,
+  CommandItem,
+  CommandList
+} from "@/components/ui/command"
+
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Card, CardContent } from "@/components/ui/card"
+// import { Command } from "lucide-react"
+import { Input } from "@/components/ui/input"
 
 function isDateKey(value: string | null) {
   if (!value) return false
@@ -46,7 +55,16 @@ function formatDateForDisplay(dateKey: string, locale: Locale) {
 
 const DIAL_CODES = ["+60"]
 
+const items = ["Apple", "Banana", "Orange", "Grapes"]
+
 export default function BookingPage() {
+
+  const [query, setQuery] = useState("")
+
+  const filtered = items.filter(item =>
+    item.toLowerCase().includes(query.toLowerCase())
+  )
+
   const params = useParams<{ locale?: string }>()
   const searchParams = useSearchParams()
 
@@ -219,6 +237,26 @@ export default function BookingPage() {
               />
               <InputGroupAddon align="inline-start"></InputGroupAddon>
             </InputGroup>
+
+            <div className="w-64">
+              <Input
+                placeholder="Search..."
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+              />
+
+              {query && (
+                <Command>
+                  <CommandList>
+                    {filtered.map(item => (
+                      <CommandItem key={item}>
+                        {item}
+                      </CommandItem>
+                    ))}
+                  </CommandList>
+                </Command>
+              )}
+            </div>
 
             <FieldLabel htmlFor="visitationReason">{t.visitationReason}</FieldLabel>
             <Textarea
