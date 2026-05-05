@@ -16,7 +16,6 @@ import {
   CardAction,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -106,17 +105,12 @@ export default function StaffApprovalsPage() {
     void loadContextData();
   }, [loadContextData]);
 
-  const handleCheckStatus = useCallback(async () => {
-    try {
-      const updatedContext = await loadContext();
-      setContext(updatedContext);
-      if (updatedContext?.is_active === APPROVED_STATUS) {
-        router.replace("/cms/dashboard");
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to check status");
+  useEffect(() => {
+    if (loading) return;
+    if (context && context.role !== ADMIN_ROLE) {
+      router.replace("/cms/dashboard");
     }
-  }, [router]);
+  }, [loading, context, router]);
 
   if (loading) {
     return (
@@ -137,48 +131,7 @@ export default function StaffApprovalsPage() {
   }
 
   if (!context || context.role !== ADMIN_ROLE) {
-    const approved = context?.is_active === APPROVED_STATUS;
-    return (
-      <div className="space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>
-              {approved ? "Access approved" : "Approval pending"}
-            </CardTitle>
-            <CardDescription>
-              {approved
-                ? "Your staff access is active. You can continue to the dashboard."
-                : "Your account is awaiting admin approval. Please check back soon."}
-            </CardDescription>
-            <CardAction>
-              <Button variant="outline" size="sm" onClick={handleCheckStatus}>
-                Check status
-              </Button>
-            </CardAction>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-3">
-              <Badge variant={approved ? "secondary" : "outline"}>
-                {approved ? "Approved" : "Pending"}
-              </Badge>
-              <span className="text-sm text-muted-foreground">
-                Signed in as {context?.email || "staff"}
-              </span>
-            </div>
-            {error && (
-              <p className="mt-4 text-sm text-destructive font-medium">{error}</p>
-            )}
-          </CardContent>
-          {approved && (
-            <CardFooter className="border-t">
-              <Button onClick={() => router.push("/cms/dashboard")}>
-                Go to dashboard
-              </Button>
-            </CardFooter>
-          )}
-        </Card>
-      </div>
-    );
+    return null;
   }
 
   return (

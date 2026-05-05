@@ -51,8 +51,6 @@ export async function GET(request: Request) {
     );
   }
 
-  const ADMIN_ROLE = "admin";
-  const APPROVED_STATUS = "approved";
   const PENDING_STATUS = "pending";
   let role = "pending";
   let status = PENDING_STATUS;
@@ -98,10 +96,7 @@ export async function GET(request: Request) {
     }
   }
 
-  const target =
-    role === ADMIN_ROLE || status === APPROVED_STATUS
-      ? "/cms/dashboard"
-      : "/cms/staff-approvals";
+  const target = "/cms/dashboard";
   const response = NextResponse.redirect(new URL(target, origin));
 
   cookiesToSet.forEach(({ name, value, options }) => {

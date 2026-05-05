@@ -96,7 +96,7 @@ const menuItemsData = menuItems.map((item: any) => ({
   })) : undefined,
 }));
 
-export function AppSidebar() {
+export function AppSidebar({ userRole }: { userRole?: string }) {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const router = useRouter();
@@ -222,7 +222,12 @@ export function AppSidebar() {
           <SidebarGroupLabel>Navigations</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {menuItemsData.map((item, index) => (
+              {(userRole === "admin"
+                ? menuItemsData
+                : menuItemsData.filter(
+                    (item: any) => item.href !== "/cms/staff-approvals"
+                  )
+              ).map((item, index) => (
                 <SidebarMenuItem key={index}>
                   {renderMenuItem(item, index)}
                 </SidebarMenuItem>

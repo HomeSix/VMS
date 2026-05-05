@@ -79,22 +79,28 @@ export default function CmsLayout({
     getUser();
   }, [supabase]);
 
-  const isApproved = userRole === ADMIN_ROLE || userStatus === APPROVED_STATUS;
+  const isAdmin = userRole === ADMIN_ROLE;
+  const isApproved = isAdmin || userStatus === APPROVED_STATUS;
+  const isDashboard = pathname === "/cms/dashboard";
   const isStaffApprovals = pathname === "/cms/staff-approvals";
-  const canViewPage = isStaffApprovals || isApproved;
+  const canViewPage = isDashboard || isApproved || (isStaffApprovals && isAdmin);
 
   useEffect(() => {
     if (loading) return;
-    if (!isApproved && !isStaffApprovals) {
-      router.replace("/cms/staff-approvals");
+    if (isStaffApprovals && !isAdmin) {
+      router.replace("/cms/dashboard");
+      return;
     }
-  }, [loading, isApproved, isStaffApprovals, router]);
+    if (!isApproved && !isDashboard) {
+      router.replace("/cms/dashboard");
+    }
+  }, [loading, isAdmin, isApproved, isDashboard, isStaffApprovals, router]);
 
   return (
     <SidebarProvider>
       <div className="flex flex-col min-h-screen w-full bg-muted/30">
         <div className="flex flex-1 min-h-0">
-          <AppSidebar />
+          <AppSidebar userRole={userRole} />
 
           <main className="flex flex-col flex-1 px-3 pt-3 sm:px-6 sm:pt-6 pb-0 min-w-0">
             <div className="flex items-center justify-between gap-2 flex-wrap mb-6">

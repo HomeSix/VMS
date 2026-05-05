@@ -18,8 +18,6 @@ import { Label } from "@/components/ui/label";
 export default function CmsLoginPage() {
   const router = useRouter();
 
-  const ADMIN_ROLE = "admin";
-  const APPROVED_STATUS = "approved";
   const PENDING_STATUS = "pending";
 
   const [email, setEmail] = useState("");
@@ -113,11 +111,7 @@ export default function CmsLoginPage() {
       const { role, status } = await ensureUserStatus(supabase);
       setLoading(false);
 
-      if (role === ADMIN_ROLE || status === APPROVED_STATUS) {
-        router.push("/cms/dashboard");
-      } else {
-        router.push("/cms/staff-approvals");
-      }
+      router.push("/cms/dashboard");
     } catch (roleError) {
       setLoading(false);
       setError(
