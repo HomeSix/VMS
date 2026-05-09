@@ -39,7 +39,7 @@ export default function CmsLoginPage() {
 
     const { data: existing, error: lookupError } = await supabase
       .from("system_user")
-      .select("role, status")
+      .select("role_id, status, is_active")
       .eq("id", user.id)
       .maybeSingle();
 
@@ -60,6 +60,12 @@ export default function CmsLoginPage() {
         user.identities?.[0]?.identity_data?.picture ||
         null;
 
+      const { data: pendingRole } = await supabase
+        .from("roles")
+        .select("id")
+        .eq("name", "pending")
+        .maybeSingle();
+
       const { data: inserted, error: insertError } = await supabase
         .from("system_user")
         .insert({
@@ -67,10 +73,11 @@ export default function CmsLoginPage() {
           email: user.email,
           full_name: fullName,
           avatar_url: avatarUrl,
-          role: "pending",
+          role_id: pendingRole?.id ?? null,
           status: PENDING_STATUS,
+          is_active: false,
         })
-        .select("role, status")
+        .select("role_id, status, is_active")
         .single();
 
       if (insertError) {
@@ -78,14 +85,26 @@ export default function CmsLoginPage() {
       }
 
       return {
-        role: inserted?.role ?? "pending",
+        role: "pending",
         status: inserted?.status ?? PENDING_STATUS,
+        is_active: inserted?.is_active ?? false,
       };
     }
 
+    let roleName = "";
+    if (existing.role_id) {
+      const { data: roleInfo } = await supabase
+        .from("roles")
+        .select("name")
+        .eq("id", existing.role_id)
+        .maybeSingle();
+      roleName = roleInfo?.name ?? "";
+    }
+
     return {
-      role: existing.role ?? "pending",
+      role: roleName,
       status: existing.status ?? PENDING_STATUS,
+      is_active: existing.is_active ?? false,
     };
   };
 

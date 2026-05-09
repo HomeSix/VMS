@@ -54,16 +54,25 @@ export async function GET(request: Request) {
   const PENDING_STATUS = "pending";
   let role = "pending";
   let status = PENDING_STATUS;
+  let isActive = false;
 
   const { data: existing, error: lookupError } = await supabase
     .from("system_user")
-    .select("role, status")
+    .select("role_id, status, is_active")
     .eq("id", user.id)
     .maybeSingle();
 
   if (!lookupError && existing) {
-    role = existing.role ?? role;
+    if (existing.role_id) {
+      const { data: roleInfo } = await supabase
+        .from("roles")
+        .select("name")
+        .eq("id", existing.role_id)
+        .maybeSingle();
+      role = roleInfo?.name ?? role;
+    }
     status = existing.status ?? status;
+    isActive = existing.is_active ?? isActive;
   } else if (!existing && !lookupError) {
     const fullName =
       user.user_metadata?.full_name ||
@@ -77,6 +86,12 @@ export async function GET(request: Request) {
       user.identities?.[0]?.identity_data?.picture ||
       null;
 
+    const { data: pendingRole } = await supabase
+      .from("roles")
+      .select("id")
+      .eq("name", "pending")
+      .maybeSingle();
+
     const { data: inserted, error: insertError } = await supabase
       .from("system_user")
       .insert({
@@ -84,15 +99,24 @@ export async function GET(request: Request) {
         email: user.email,
         full_name: fullName,
         avatar_url: avatarUrl,
-        role: "pending",
+        role_id: pendingRole?.id ?? null,
         status: PENDING_STATUS,
+        is_active: false,
       })
-      .select("role, status")
+      .select("role_id, status, is_active")
       .single();
 
-    if (!insertError) {
-      role = inserted?.role ?? role;
-      status = inserted?.status ?? status;
+    if (!insertError && inserted) {
+      if (inserted.role_id) {
+        const { data: roleInfo } = await supabase
+          .from("roles")
+          .select("name")
+          .eq("id", inserted.role_id)
+          .maybeSingle();
+        role = roleInfo?.name ?? role;
+      }
+      status = inserted.status ?? status;
+      isActive = inserted.is_active ?? isActive;
     }
   }
 

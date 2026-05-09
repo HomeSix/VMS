@@ -6,7 +6,21 @@ export const config = {
 };
 
 const ADMIN_ROLE = "admin";
-const APPROVED_STATUS = "approved";
+const APPROVED_STATUS = true;
+
+// Normalize paths for consistent comparison
+// Handles both "/cms/permissions" and "permissions" formats
+function normalizePath(path: string): string {
+  // Remove leading /cms/ or cms/ prefix if present
+  return path.replace(/^\/cms\//, "").replace(/^cms\//, "");
+}
+
+// Full path with /cms/ prefix
+function fullPath(path: string): string {
+  if (path.startsWith("/cms/")) return path;
+  if (path.startsWith("/")) return `/cms${path}`;
+  return `/cms/${path}`;
+}
 
 export async function middleware(request: NextRequest) {
   const supabase = createServerClient(
@@ -16,6 +30,12 @@ export async function middleware(request: NextRequest) {
       cookies: {
         getAll() {
           return request.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          // Required for SSR auth to work properly
+          cookiesToSet.forEach(({ name, value, options }) => {
+            request.cookies.set(name, value);
+          });
         },
       },
     }
@@ -28,6 +48,7 @@ export async function middleware(request: NextRequest) {
   if (!session) {
     const url = request.nextUrl.clone();
     url.pathname = "/auth/login";
+    url.searchParams.set("redirectTo", pathname);
     return NextResponse.redirect(url);
   }
 
@@ -37,32 +58,121 @@ export async function middleware(request: NextRequest) {
   if (!user) {
     const url = request.nextUrl.clone();
     url.pathname = "/auth/login";
+    url.searchParams.set("redirectTo", pathname);
     return NextResponse.redirect(url);
   }
 
-  const { data: roleData } = await supabase
+  const { data: userRoleData, error: userRoleError } = await supabase
     .from("system_user")
-    .select("role, status")
+    .select("role_id, is_active")
     .eq("id", user.id)
     .maybeSingle();
 
-  const role = roleData?.role ?? "";
-  const status = roleData?.status ?? "pending";
-  const isDashboard = pathname === "/cms/dashboard";
-  const isStaffApprovals = pathname === "/cms/staff-approvals";
-  const isAdmin = role === ADMIN_ROLE;
-  const isApproved = isAdmin || status === APPROVED_STATUS;
-
-  if (isStaffApprovals && !isAdmin) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/cms/dashboard";
-    return NextResponse.redirect(url);
+  let roleName = "";
+  if (userRoleData?.role_id) {
+    const { data: roleInfo, error: roleError } = await supabase
+      .from("roles")
+      .select("name")
+      .eq("id", userRoleData.role_id)
+      .maybeSingle();
+    
+    if (roleError) {
+      console.error("Role fetch error:", roleError);
+    }
+    
+    roleName = roleInfo?.name ?? "";
   }
 
+  const isDashboard = pathname === "/cms/dashboard";
+  const isPermissions = pathname === "/cms/permissions";
+  const isDenied = pathname === "/cms/denied";
+  const isAdmin = roleName === ADMIN_ROLE;
+  const isApproved = isAdmin || userRoleData?.is_active === APPROVED_STATUS;
+
+  // Always allow the denied page
+  if (isDenied) {
+    return NextResponse.next();
+  }
+
+  // Unapproved users only see dashboard (and denied)
   if (!isApproved && !isDashboard) {
     const url = request.nextUrl.clone();
     url.pathname = "/cms/dashboard";
     return NextResponse.redirect(url);
+  }
+
+  // Admin bypasses all permission checks
+  if (isAdmin) {
+    return NextResponse.next();
+  }
+
+  // Role-based page permission check for non-admin approved users
+  if (isApproved && !isDashboard) {
+    const roleId = userRoleData?.role_id;
+    
+    if (!roleId) {
+      // No role assigned — deny everything except dashboard
+      const url = request.nextUrl.clone();
+      url.pathname = "/cms/denied";
+      return NextResponse.redirect(url);
+    }
+
+    // Try matching with full path first (e.g., "/cms/permissions")
+    let { data: perm, error: permError } = await supabase
+      .from("role_permissions")
+      .select("can_access")
+      .eq("role_id", roleId)
+      .eq("page_path", pathname)
+      .maybeSingle();
+
+    // If no match, try with normalized path (e.g., "permissions")
+    if (!perm && !permError) {
+      const normalized = normalizePath(pathname);
+      const result = await supabase
+        .from("role_permissions")
+        .select("can_access")
+        .eq("role_id", roleId)
+        .eq("page_path", normalized)
+        .maybeSingle();
+      perm = result.data;
+      permError = result.error;
+    }
+
+    // Debug logging (uncomment to troubleshoot)
+    // console.log({
+    //   pathname,
+    //   normalizedPath: normalizePath(pathname),
+    //   roleId,
+    //   roleName,
+    //   perm,
+    //   permError,
+    //   userRoleData,
+    // });
+
+    if (permError) {
+      console.error("Permission fetch error:", permError);
+      const url = request.nextUrl.clone();
+      url.pathname = "/cms/denied";
+      return NextResponse.redirect(url);
+    }
+
+    // Explicit deny
+    if (perm && perm.can_access === false) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/cms/denied";
+      return NextResponse.redirect(url);
+    }
+
+    // No permission record found — configurable behavior
+    if (!perm) {
+      // Option 1: Deny by default (strict)
+      const url = request.nextUrl.clone();
+      url.pathname = "/cms/denied";
+      return NextResponse.redirect(url);
+      
+      // Option 2: Allow by default (permissive) — uncomment below, comment out above
+      // return NextResponse.next();
+    }
   }
 
   return NextResponse.next();

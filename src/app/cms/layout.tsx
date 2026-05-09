@@ -56,13 +56,22 @@ export default function CmsLayout({
 
         const { data: userData, error: roleError } = await supabase
           .from("system_user")
-          .select("role, status")
+          .select("role_id, is_active")
           .eq("id", user.id)
           .maybeSingle();
 
-        if (!roleError) {
-          setUserRole(userData?.role ?? "");
-          setUserStatus(userData?.status ?? PENDING_STATUS);
+        if (!roleError && userData) {
+          let roleName = "";
+          if (userData.role_id) {
+            const { data: roleInfo } = await supabase
+              .from("roles")
+              .select("name")
+              .eq("id", userData.role_id)
+              .maybeSingle();
+            roleName = roleInfo?.name ?? "";
+          }
+          setUserRole(roleName);
+          setUserStatus(userData.is_active ? "approved" : PENDING_STATUS);
         } else {
           setUserRole("");
           setUserStatus(PENDING_STATUS);
@@ -82,19 +91,17 @@ export default function CmsLayout({
   const isAdmin = userRole === ADMIN_ROLE;
   const isApproved = isAdmin || userStatus === APPROVED_STATUS;
   const isDashboard = pathname === "/cms/dashboard";
-  const isStaffApprovals = pathname === "/cms/staff-approvals";
-  const canViewPage = isDashboard || isApproved || (isStaffApprovals && isAdmin);
+  const isPermissions = pathname === "/cms/permissions";
+  const isDenied = pathname === "/cms/denied";
+  const canViewPage = isDenied || isDashboard || isApproved || isPermissions;
 
   useEffect(() => {
     if (loading) return;
-    if (isStaffApprovals && !isAdmin) {
-      router.replace("/cms/dashboard");
-      return;
-    }
+    if (isDenied) return; // always show denied page
     if (!isApproved && !isDashboard) {
       router.replace("/cms/dashboard");
     }
-  }, [loading, isAdmin, isApproved, isDashboard, isStaffApprovals, router]);
+  }, [loading, isApproved, isDashboard, isDenied, router]);
 
   return (
     <SidebarProvider>

@@ -5,10 +5,10 @@
     "href": "/cms/dashboard",
     "badge": "New"
   },
-  { 
-    "label": "Staff Approvals", 
+  {
+    "label": "Permissions",
     "icon": "UserCheck",
-    "href": "/cms/staff-approvals"
+    "href": "/cms/permissions"
   },
   {
     "label": "Projects",
@@ -41,5 +41,10 @@
     "icon": "Mail",
     "href": "/messages",
     "badge": "3"
+  },
+  {
+    "label": "Test",
+    "icon": "HelpCircle",
+    "href": "/cms/test"
   }
 ]

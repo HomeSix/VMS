@@ -59,6 +59,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useRouter, usePathname } from "next/navigation";
 import { createClient } from "@/lib/client";
+import { useEffect, useState } from "react";
 import menuItems from "@/data/menu-items.json";
 
 const iconMap: { [key: string]: any } = {
@@ -102,8 +103,58 @@ export function AppSidebar({ userRole }: { userRole?: string }) {
   const router = useRouter();
   const pathname = usePathname();
   const supabase = createClient();
+  const [canAccessPermissions, setCanAccessPermissions] = useState(false);
 
   
+  useEffect(() => {
+    const checkPermissions = async () => {
+      if (!userRole || userRole === "pending") {
+        setCanAccessPermissions(false);
+        return;
+      }
+
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          setCanAccessPermissions(false);
+          return;
+        }
+
+        const { data: userData } = await supabase
+          .from("system_user")
+          .select("role_id")
+          .eq("id", user.id)
+          .maybeSingle();
+
+        if (!userData?.role_id) {
+          setCanAccessPermissions(false);
+          return;
+        }
+
+        // Admin always has access
+        if (userRole === "admin") {
+          setCanAccessPermissions(true);
+          return;
+        }
+
+        // Check role permissions for /cms/permissions
+        const { data: perm } = await supabase
+          .from("role_permissions")
+          .select("can_access")
+          .eq("role_id", userData.role_id)
+          .eq("page_path", "/cms/permissions")
+          .maybeSingle();
+
+        setCanAccessPermissions(perm?.can_access || false);
+      } catch (error) {
+        console.error("Error checking permissions:", error);
+        setCanAccessPermissions(false);
+      }
+    };
+
+    checkPermissions();
+  }, [userRole, supabase]);
+
   const handleLogout = async () => {
     try {
       await supabase.auth.signOut();
@@ -121,9 +172,9 @@ export function AppSidebar({ userRole }: { userRole?: string }) {
   const renderMenuItem = (item: any, index: number) => {
     const isActive = item.href ? pathname === item.href : false;
     
-    // Debug logging to understand the issue
-    if (item.href && (item.href === "/cms/dashboard" || item.href === "/cms/staff-approvals")) {
-      console.log(`Menu item: ${item.label}, href: ${item.href}, pathname: ${pathname}, isActive: ${isActive}`);
+    // Hide permissions link if user doesn't have access
+    if (item.href === "/cms/permissions" && !canAccessPermissions) {
+      return null;
     }
 
     if (item.submenu) {
@@ -222,12 +273,7 @@ export function AppSidebar({ userRole }: { userRole?: string }) {
           <SidebarGroupLabel>Navigations</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {(userRole === "admin"
-                ? menuItemsData
-                : menuItemsData.filter(
-                    (item: any) => item.href !== "/cms/staff-approvals"
-                  )
-              ).map((item, index) => (
+              {menuItemsData.map((item, index) => (
                 <SidebarMenuItem key={index}>
                   {renderMenuItem(item, index)}
                 </SidebarMenuItem>
