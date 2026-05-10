@@ -16,6 +16,11 @@
     "href": "/cms/history"
   },
   {
+    "label": "Teacher Availability",
+    "icon": "Users",
+    "href": "/cms/availability"
+  },
+  {
     "label": "Projects",
     "icon": "FolderOpen",
     "submenu": [

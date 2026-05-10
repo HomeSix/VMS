@@ -72,6 +72,7 @@ export const translations: Record<
 		appointmentTimeLabel: string;
 		appointmentAvailable: string;
 		appointmentBooked: string;
+		appointmentUnavailable: string;
 		appointmentDays: string[];
 		appointmentTimeSlots: string[];
 
@@ -148,6 +149,7 @@ export const translations: Record<
 		appointmentTimeLabel: "Time Slot",
 		appointmentAvailable: "Available",
 		appointmentBooked: "Booked",
+		appointmentUnavailable: "Not available",
 		appointmentDays: ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
 		appointmentTimeSlots: [
 			"08:00 - 09:00",
@@ -232,6 +234,7 @@ export const translations: Record<
 		appointmentTimeLabel: "Slot Masa",
 		appointmentAvailable: "Tersedia",
 		appointmentBooked: "Ditempah",
+		appointmentUnavailable: "Tidak tersedia",
 		appointmentDays: ["Ahad", "Isnin", "Selasa", "Rabu", "Khamis", "Jumaat", "Sabtu"],
 		appointmentTimeSlots: [
 			"08:00 - 09:00",

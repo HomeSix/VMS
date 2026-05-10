@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { loadContext, type ContextData } from "../permissions/actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import {
   Card,
   CardAction,
@@ -13,14 +14,56 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { StatCard } from "@/components/ui/stat-card";
+import { createClient } from "@/lib/client";
 
 const ADMIN_ROLE = "admin";
 const APPROVED_STATUS = true;
+
+const OPEN_START = 8 * 60;
+const OPEN_END = 16 * 60 + 30;
+const SLOT_STEP = 30;
+
+const toTime = (minutes: number) => {
+  const hours = Math.floor(minutes / 60)
+    .toString()
+    .padStart(2, "0");
+  const mins = Math.floor(minutes % 60)
+    .toString()
+    .padStart(2, "0");
+  return `${hours}:${mins}`;
+};
+
+const toDateKey = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const TIME_SLOTS = Array.from(
+  { length: Math.ceil((OPEN_END - OPEN_START) / SLOT_STEP) },
+  (_, index) => toTime(OPEN_START + index * SLOT_STEP)
+);
 
 export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [context, setContext] = useState<ContextData | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const supabase = useMemo(() => createClient(), []);
+
+  const [availabilityDate, setAvailabilityDate] = useState(() =>
+    toDateKey(new Date())
+  );
+  const [allDayAvailable, setAllDayAvailable] = useState(true);
+  const [availabilitySlots, setAvailabilitySlots] = useState<string[]>([]);
+  const [availabilityLoading, setAvailabilityLoading] = useState(false);
+  const [availabilitySaving, setAvailabilitySaving] = useState(false);
+  const [availabilityError, setAvailabilityError] = useState<string | null>(
+    null
+  );
+  const [availabilitySuccess, setAvailabilitySuccess] = useState<string | null>(
+    null
+  );
 
   const loadContextData = useCallback(async () => {
     setLoading(true);
@@ -51,6 +94,133 @@ export default function DashboardPage() {
       );
     }
   }, []);
+
+  const loadAvailability = useCallback(async () => {
+    if (!context || context.role === ADMIN_ROLE) return;
+    setAvailabilityLoading(true);
+    setAvailabilityError(null);
+    setAvailabilitySuccess(null);
+
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      setAvailabilityError("Unable to load your profile.");
+      setAvailabilityLoading(false);
+      return;
+    }
+
+    const { data: userRecord, error: userRecordError } = await supabase
+      .from("system_user")
+      .select("isAvailable, is_available")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (userRecordError) {
+      setAvailabilityError(userRecordError.message);
+    }
+
+    const allDay = Boolean(
+      userRecord?.isAvailable ?? userRecord?.is_available ?? true
+    );
+    setAllDayAvailable(allDay);
+
+    const { data: slotRows } = await supabase
+      .from("teacher_availability")
+      .select("slot_time")
+      .eq("user_id", user.id)
+      .eq("available_date", availabilityDate);
+
+    const slots = (slotRows ?? [])
+      .map((row: any) => String(row.slot_time ?? "").slice(0, 5))
+      .filter((slot) => slot.length === 5);
+
+    setAvailabilitySlots(slots);
+    setAvailabilityLoading(false);
+  }, [availabilityDate, context, supabase]);
+
+  useEffect(() => {
+    if (!context || context.role === ADMIN_ROLE) return;
+    void loadAvailability();
+  }, [context, availabilityDate, loadAvailability]);
+
+  const handleAllDayChange = useCallback((checked: boolean) => {
+    setAllDayAvailable(checked);
+    setAvailabilitySuccess(null);
+    if (checked) {
+      setAvailabilitySlots([]);
+    }
+  }, []);
+
+  const toggleSlot = useCallback((slot: string) => {
+    setAvailabilitySlots((prev) =>
+      prev.includes(slot) ? prev.filter((item) => item !== slot) : [...prev, slot]
+    );
+    setAvailabilitySuccess(null);
+  }, []);
+
+  const handleSaveAvailability = useCallback(async () => {
+    setAvailabilitySaving(true);
+    setAvailabilityError(null);
+    setAvailabilitySuccess(null);
+
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      setAvailabilityError("Unable to update your profile.");
+      setAvailabilitySaving(false);
+      return;
+    }
+
+    const { error: updateError } = await supabase
+      .from("system_user")
+      .update({ isAvailable: allDayAvailable })
+      .eq("id", user.id);
+
+    if (updateError) {
+      setAvailabilityError(updateError.message);
+      setAvailabilitySaving(false);
+      return;
+    }
+
+    const { error: deleteError } = await supabase
+      .from("teacher_availability")
+      .delete()
+      .eq("user_id", user.id)
+      .eq("available_date", availabilityDate);
+
+    if (deleteError) {
+      setAvailabilityError(deleteError.message);
+      setAvailabilitySaving(false);
+      return;
+    }
+
+    if (!allDayAvailable && availabilitySlots.length > 0) {
+      const payload = availabilitySlots.map((slot) => ({
+        user_id: user.id,
+        available_date: availabilityDate,
+        slot_time: slot,
+      }));
+
+      const { error: insertError } = await supabase
+        .from("teacher_availability")
+        .insert(payload);
+
+      if (insertError) {
+        setAvailabilityError(insertError.message);
+        setAvailabilitySaving(false);
+        return;
+      }
+    }
+
+    setAvailabilitySuccess("Availability updated successfully.");
+    setAvailabilitySaving(false);
+  }, [allDayAvailable, availabilityDate, availabilitySlots, supabase]);
 
   if (loading) {
     return (
@@ -369,6 +539,104 @@ export default function DashboardPage() {
           </div>
         </CardContent>
       </Card>
+
+      {!isAdmin && (
+        <Card>
+          <CardHeader>
+            <CardTitle>My availability</CardTitle>
+            <CardDescription>
+              Set the hours you can accept visitor appointments (08:00 - 16:30).
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <Switch
+                  checked={allDayAvailable}
+                  onCheckedChange={handleAllDayChange}
+                />
+                <div>
+                  <p className="text-sm font-medium">Available all day</p>
+                  <p className="text-xs text-muted-foreground">
+                    Turn off to pick specific time slots.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 text-sm">
+                <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Date
+                </label>
+                <input
+                  type="date"
+                  value={availabilityDate}
+                  onChange={(event) => setAvailabilityDate(event.target.value)}
+                  className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+                />
+              </div>
+            </div>
+
+            {!allDayAvailable && (
+              <div className="space-y-3">
+                <p className="text-xs text-muted-foreground">
+                  Select the 30-minute slots you are available for.
+                </p>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-6">
+                  {TIME_SLOTS.map((slot) => {
+                    const isSelected = availabilitySlots.includes(slot);
+                    return (
+                      <button
+                        key={slot}
+                        type="button"
+                        onClick={() => toggleSlot(slot)}
+                        className={`h-9 rounded-md border text-xs font-medium transition-colors ${
+                          isSelected
+                            ? "border-foreground bg-foreground text-background"
+                            : "border-input hover:bg-accent"
+                        }`}
+                      >
+                        {slot}
+                      </button>
+                    );
+                  })}
+                </div>
+                {availabilitySlots.length === 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    No slots selected yet.
+                  </p>
+                )}
+              </div>
+            )}
+
+            {availabilityError && (
+              <p className="text-sm text-destructive font-medium">
+                {availabilityError}
+              </p>
+            )}
+            {availabilitySuccess && (
+              <p className="text-sm text-emerald-600 font-medium">
+                {availabilitySuccess}
+              </p>
+            )}
+
+            <div className="flex flex-wrap items-center gap-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSaveAvailability}
+                disabled={availabilitySaving || availabilityLoading}
+              >
+                {availabilitySaving ? "Saving..." : "Save availability"}
+              </Button>
+              {availabilityLoading && (
+                <span className="text-xs text-muted-foreground">
+                  Loading availability...
+                </span>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>
