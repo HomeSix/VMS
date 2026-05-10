@@ -27,6 +27,10 @@ export const translations: Record<
 		scheduleBlockedHint: string;
 		scheduleNoSlots: string;
 		scheduleContinueButton: string;
+		teacherLabel: string;
+		teacherPlaceholder: string;
+		teacherLoading: string;
+		teacherEmpty: string;
 		bookingChangeScheduleButton: string;
 		bookingPickScheduleFirst: string;
 		carPlateCheckBoxLabel: string;
@@ -99,6 +103,10 @@ export const translations: Record<
 		scheduleBlockedHint: "Tip: greyed out slots are already booked.",
 		scheduleNoSlots: "No available slots for this date.",
 		scheduleContinueButton: "Continue to Personal Information",
+		teacherLabel: "Teacher",
+		teacherPlaceholder: "Select a teacher",
+		teacherLoading: "Loading teachers...",
+		teacherEmpty: "No teachers available",
 		bookingChangeScheduleButton: "Change Date & Time",
 		bookingPickScheduleFirst: "Please pick date and time first.",
 		carPlateCheckBoxLabel: "I have a vehicle to park",
@@ -179,6 +187,10 @@ export const translations: Record<
 		scheduleBlockedHint: "Tip: slot berwarna kelabu bermaksud sudah ditempah.",
 		scheduleNoSlots: "Tiada slot tersedia untuk tarikh ini.",
 		scheduleContinueButton: "Teruskan ke Maklumat Peribadi",
+		teacherLabel: "Guru",
+		teacherPlaceholder: "Pilih guru",
+		teacherLoading: "Memuatkan senarai guru...",
+		teacherEmpty: "Tiada guru tersedia",
 		bookingChangeScheduleButton: "Tukar Tarikh & Masa",
 		bookingPickScheduleFirst: "Sila pilih tarikh dan masa dahulu.",
 		carPlateCheckBoxLabel: "Saya mempunyai kenderaan untuk diparkir",

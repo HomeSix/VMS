@@ -75,6 +75,7 @@ export default function BookingPage() {
   const selectedDate = searchParams.get("date")
   const selectedStartTime = searchParams.get("start")
   const selectedEndTime = searchParams.get("end")
+  const selectedTeacher = searchParams.get("teacher")
 
   const hasValidSchedule =
     selectedDate !== null &&
@@ -136,6 +137,7 @@ export default function BookingPage() {
       start_time: selectedStartTime,
       end_time: selectedEndTime,
       plate_number: hasCar ? plateNumberValue.trim() : null,
+      book_teacher: selectedTeacher ? selectedTeacher.trim() : null,
     })
 
     if (error) {

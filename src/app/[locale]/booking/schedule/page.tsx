@@ -11,6 +11,13 @@ import { FieldLabel } from "@/components/ui/field"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { ChevronDownIcon } from "lucide-react"
 
 function toDateKey(date: Date) {
@@ -64,12 +71,16 @@ export default function BookingSchedulePage() {
   const incomingDate = searchParams.get("date")
   const incomingStart = searchParams.get("start")
   const incomingEnd = searchParams.get("end")
+  const incomingTeacher = searchParams.get("teacher")
 
   const [dateOpen, setDateOpen] = useState(false)
   const [date, setDate] = useState<Date | undefined>()
   const [bookedRanges, setBookedRanges] = useState<TimeRange[]>([])
   const [selectedRange, setSelectedRange] = useState<TimeRange | null>(null)
   const [pendingStartTime, setPendingStartTime] = useState<string | null>(null)
+  const [teacherName, setTeacherName] = useState(incomingTeacher ?? "")
+  const [teachers, setTeachers] = useState<Array<{ id: string; fullName: string }>>([])
+  const [teachersLoading, setTeachersLoading] = useState(true)
 
   useEffect(() => {
     if (!incomingDate) return
@@ -83,6 +94,40 @@ export default function BookingSchedulePage() {
       setSelectedRange({ start: incomingStart, end: incomingEnd })
     }
   }, [incomingDate, incomingStart, incomingEnd])
+
+  useEffect(() => {
+    if (!incomingTeacher) return
+    setTeacherName(incomingTeacher)
+  }, [incomingTeacher])
+
+  useEffect(() => {
+    const loadTeachers = async () => {
+      const supabase = createClient()
+
+      const { data, error } = await supabase
+        .from("system_user")
+        .select("id, full_name")
+        .order("full_name", { ascending: true })
+
+      if (error) {
+        setTeachers([])
+        setTeachersLoading(false)
+        return
+      }
+
+      const normalized = (data ?? [])
+        .map((row) => ({
+          id: String(row.id),
+          fullName: String(row.full_name ?? "").trim(),
+        }))
+        .filter((row) => row.fullName.length > 0)
+
+      setTeachers(normalized)
+      setTeachersLoading(false)
+    }
+
+    void loadTeachers()
+  }, [])
 
   useEffect(() => {
     const loadBookedSlots = async () => {
@@ -118,6 +163,7 @@ export default function BookingSchedulePage() {
   }, [date])
 
   const dateKey = date ? toDateKey(date) : null
+  const teacherParam = teacherName ? `&teacher=${encodeURIComponent(teacherName)}` : ""
 
   const isSlotBooked = (slotTime: string) => {
     const slotStart = toMinutes(slotTime)
@@ -171,6 +217,34 @@ export default function BookingSchedulePage() {
 
         {/* date and time */}
         <div className="grid gap-4 rounded-md border border-input p-4">
+          <div className="grid gap-2">
+            <FieldLabel htmlFor="teacher-select">{t.teacherLabel}</FieldLabel>
+            <Select
+              value={teacherName}
+              onValueChange={(value) => setTeacherName(value ?? "")}
+              disabled={teachersLoading}
+            >
+              <SelectTrigger id="teacher-select" className="w-full sm:w-72">
+                <SelectValue
+                  placeholder={teachersLoading ? t.teacherLoading : t.teacherPlaceholder}
+                />
+              </SelectTrigger>
+              <SelectContent align="start">
+                {teachers.length === 0 ? (
+                  <SelectItem value="no-teachers" disabled>
+                    {t.teacherEmpty}
+                  </SelectItem>
+                ) : (
+                  teachers.map((teacher) => (
+                    <SelectItem key={teacher.id} value={teacher.fullName}>
+                      {teacher.fullName}
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+
           <FieldLabel htmlFor="date-picker">{t.date}</FieldLabel>
           <Popover open={dateOpen} onOpenChange={setDateOpen}>
             <PopoverTrigger
@@ -271,7 +345,7 @@ export default function BookingSchedulePage() {
             <Link
               href={
                 dateKey && selectedRange
-                  ? `/${locale}/booking?date=${dateKey}&start=${selectedRange.start}&end=${selectedRange.end}`
+                  ? `/${locale}/booking?date=${dateKey}&start=${selectedRange.start}&end=${selectedRange.end}${teacherParam}`
                   : `/${locale}/booking`
               }
               aria-disabled={!dateKey || !selectedRange}
