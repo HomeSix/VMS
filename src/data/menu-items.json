@@ -11,6 +11,11 @@
     "href": "/cms/permissions"
   },
   {
+    "label": "Booking History",
+    "icon": "FileText",
+    "href": "/cms/history"
+  },
+  {
     "label": "Projects",
     "icon": "FolderOpen",
     "submenu": [

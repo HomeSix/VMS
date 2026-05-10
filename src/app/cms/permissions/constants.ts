@@ -6,5 +6,6 @@ export type PagePermissionEntry = {
 export const PROTECTED_PAGES: PagePermissionEntry[] = [
   { page_path: "/cms/dashboard", label: "Dashboard" },
   { page_path: "/cms/permissions", label: "Permissions" },
+  { page_path: "/cms/history", label: "Booking History" },
   { page_path: "/cms/test", label: "Test Page" },
 ];

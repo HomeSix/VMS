@@ -12,6 +12,7 @@ function Dialog({ ...props }: DialogPrimitive.Root.Props) {
 }
 
 function DialogTrigger({ ...props }: DialogPrimitive.Trigger.Props) {
+  // Base UI uses `render`, not `asChild`.
   return <DialogPrimitive.Trigger data-slot="dialog-trigger" {...props} />
 }
 
@@ -23,10 +24,7 @@ function DialogClose({ ...props }: DialogPrimitive.Close.Props) {
   return <DialogPrimitive.Close data-slot="dialog-close" {...props} />
 }
 
-function DialogOverlay({
-  className,
-  ...props
-}: DialogPrimitive.Backdrop.Props) {
+function DialogOverlay({ className, ...props }: DialogPrimitive.Backdrop.Props) {
   return (
     <DialogPrimitive.Backdrop
       data-slot="dialog-overlay"
@@ -44,9 +42,7 @@ function DialogContent({
   children,
   showCloseButton = true,
   ...props
-}: DialogPrimitive.Popup.Props & {
-  showCloseButton?: boolean
-}) {
+}: DialogPrimitive.Popup.Props & { showCloseButton?: boolean }) {
   return (
     <DialogPortal>
       <DialogOverlay />
@@ -59,6 +55,7 @@ function DialogContent({
         {...props}
       >
         {children}
+
         {showCloseButton && (
           <DialogPrimitive.Close
             data-slot="dialog-close"
@@ -70,8 +67,7 @@ function DialogContent({
               />
             }
           >
-            <XIcon
-            />
+            <XIcon />
             <span className="sr-only">Close</span>
           </DialogPrimitive.Close>
         )}
@@ -95,9 +91,7 @@ function DialogFooter({
   showCloseButton = false,
   children,
   ...props
-}: React.ComponentProps<"div"> & {
-  showCloseButton?: boolean
-}) {
+}: React.ComponentProps<"div"> & { showCloseButton?: boolean }) {
   return (
     <div
       data-slot="dialog-footer"
@@ -108,6 +102,7 @@ function DialogFooter({
       {...props}
     >
       {children}
+
       {showCloseButton && (
         <DialogPrimitive.Close render={<Button variant="outline" />}>
           Close
