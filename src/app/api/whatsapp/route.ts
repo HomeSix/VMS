@@ -1,8 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { makeWASocket, useMultiFileAuthState } from 'baileys';
+
 let sockInstance: any = null;
 let sockReady: Promise<any> | null = null;
 let sockStatus: 'open' | 'connecting' | 'closed' = 'closed';
+let connectingPromise: Promise<any> | null = null;
+
+async function waitForWhatsAppConnected(sock: any, timeout = 30000) {
+    if (sock?.user) return; // already connected and authenticated!
+    if (!connectingPromise) {
+        connectingPromise = new Promise<void>((resolve, reject) => {
+            let done = false;
+            sock.ev.on('connection.update', (u: any) => {
+                if (done) return;
+                if (u.connection === 'open') {
+                    done = true; resolve();
+                }
+                if (u.connection === 'close') {
+                    done = true; reject(new Error('WhatsApp connection closed'));
+                }
+            });
+            setTimeout(() => {
+                if (done) return;
+                done = true;
+                reject(new Error('Timeout waiting for WhatsApp connection'));
+            }, timeout);
+        });
+    }
+    return connectingPromise;
+}
 
 async function getWhatsAppSocket() {
     if (sockInstance && sockStatus === 'open') return sockInstance;
@@ -22,22 +48,9 @@ async function getWhatsAppSocket() {
                 sockStatus = 'closed';
                 sockInstance = null;
                 sockReady = null;
+                connectingPromise = null;
                 console.log('WhatsApp connection closed.');
             }
-        });
-        // Wait for connection to be open
-        await new Promise((resolve, reject) => {
-            const timeout = setTimeout(() => reject(new Error('Timeout waiting for WhatsApp connection')), 15000);
-            sock.ev.on('connection.update', ({ connection }) => {
-                if (connection === 'open') {
-                    clearTimeout(timeout);
-                    resolve(true);
-                }
-                if (connection === 'close') {
-                    clearTimeout(timeout);
-                    reject(new Error('WhatsApp connection closed during init'));
-                }
-            });
         });
         sockInstance = sock;
         return sock;
@@ -54,11 +67,19 @@ export async function POST(req: NextRequest) {
         let sock;
         try {
             sock = await getWhatsAppSocket();
+            await waitForWhatsAppConnected(sock, 30000);
         } catch (err: any) {
-            return NextResponse.json({ success: false, error: 'WhatsApp socket not connected: ' + err.message }, { status: 500 });
+            return NextResponse.json({
+                success: false,
+                error: 'WhatsApp socket not connected: ' + err.message +
+                    ' - If this is your first time, please scan the QR code in the backend terminal by making any WhatsApp API request, or run `node whatsapp-qr.mjs` and scan using WhatsApp App.'
+            }, { status: 500 });
         }
         if (!sock || sockStatus !== 'open') {
-            return NextResponse.json({ success: false, error: 'WhatsApp socket not connected.' }, { status: 500 });
+            return NextResponse.json({
+                success: false,
+                error: 'WhatsApp socket not connected. If this is your first time, please scan the QR code in the backend terminal by making any WhatsApp API request, or run `node whatsapp-qr.mjs` and scan using WhatsApp App.'
+            }, { status: 500 });
         }
         const jidResult = await sock.onWhatsApp(`${phone}@s.whatsapp.net`);
         if (!jidResult[0]?.exists) {
