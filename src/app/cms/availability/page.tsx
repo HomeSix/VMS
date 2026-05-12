@@ -353,7 +353,6 @@ export default function TeacherAvailabilityPage() {
                   <TableHead>Email</TableHead>
                   <TableHead>Role</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Slots</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -431,13 +430,6 @@ export default function TeacherAvailabilityPage() {
                         ) : (
                           <Badge variant={badgeVariant}>{statusLabel}</Badge>
                         )}
-                      </TableCell>
-                      <TableCell>
-                        {isAllDay
-                          ? "All day"
-                          : hasSlots
-                            ? `${row.slotCount} slots`
-                            : "-"}
                       </TableCell>
                     </TableRow>
                   );

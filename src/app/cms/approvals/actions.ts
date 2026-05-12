@@ -62,7 +62,7 @@ export async function fetchApprovalBookings(): Promise<BookingApprovalRecord[]> 
   } else if (context.role === SECURITY_ROLE) {
     query = query
       .eq("email", context.email)
-      .in("book_status", ["approved", "rejected"]);
+      .or("book_status.is.null,book_status.eq.pending,book_status.eq.approved,book_status.eq.rejected");
   }
 
   const { data, error } = await query

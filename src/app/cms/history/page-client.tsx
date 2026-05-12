@@ -26,6 +26,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
@@ -414,7 +415,26 @@ export default function HistoryPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Bookings</CardTitle>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <CardTitle>Bookings</CardTitle>
+            <div className="flex items-center gap-2">
+              <Label htmlFor="walk-in-only" className="text-xs">
+                Walk-in only
+              </Label>
+              <Switch
+                id="walk-in-only"
+                checked={filters.walkInOnly ?? false}
+                onCheckedChange={(checked) => {
+                  const nextFilters = {
+                    ...filters,
+                    walkInOnly: checked,
+                  };
+                  setFilters(nextFilters);
+                  void loadBookings(nextFilters);
+                }}
+              />
+            </div>
+          </div>
           <CardDescription>
             {loading ? "Loading data..." : `Total ${bookings.length} record(s)`}
           </CardDescription>
@@ -576,6 +596,13 @@ export default function HistoryPage() {
                                   <p className="text-xs text-muted-foreground">End time</p>
                                   <p className="text-sm font-semibold">
                                     {formatTime(booking.end_time)}
+                                  </p>
+                                </div>
+
+                                <div className="rounded-lg border bg-muted/30 p-3">
+                                  <p className="text-xs text-muted-foreground">Booked teacher</p>
+                                  <p className="text-sm font-semibold">
+                                    {booking.book_teacher ?? "-"}
                                   </p>
                                 </div>
 

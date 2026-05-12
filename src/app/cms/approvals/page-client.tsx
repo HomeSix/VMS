@@ -273,8 +273,10 @@ export default function BookingApprovalsPage() {
                 ) : (
                   bookings.map((booking) => {
                     const approvalStatus = getApprovalStatus(booking.book_status);
-                    const canApprove = booking.book_status !== "approved";
-                    const canReject = booking.book_status !== "rejected";
+                    const isPending =
+                      booking.book_status == null || booking.book_status === "pending";
+                    const canApprove = isPending;
+                    const canReject = isPending;
                     const canCheckOut =
                       booking.book_status === "approved" && booking.status !== true;
                     return (
@@ -382,7 +384,7 @@ export default function BookingApprovalsPage() {
                                     </p>
                                   </div>
                                   <div className="rounded-lg border bg-muted/30 p-3">
-                                    <p className="text-xs text-muted-foreground">Teacher</p>
+                                    <p className="text-xs text-muted-foreground">Booked teacher</p>
                                     <p className="text-sm font-semibold">
                                       {booking.book_teacher ?? "-"}
                                     </p>
