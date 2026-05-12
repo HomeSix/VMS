@@ -51,14 +51,12 @@ export async function GET(request: Request) {
     );
   }
 
-  const PENDING_STATUS = "pending";
   let role = "pending";
-  let status = PENDING_STATUS;
   let isActive = false;
 
   const { data: existing, error: lookupError } = await supabase
     .from("system_user")
-    .select("role_id, status, is_active")
+    .select("role_id, is_active")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -71,7 +69,6 @@ export async function GET(request: Request) {
         .maybeSingle();
       role = roleInfo?.name ?? role;
     }
-    status = existing.status ?? status;
     isActive = existing.is_active ?? isActive;
   } else if (!existing && !lookupError) {
     const fullName =
@@ -100,10 +97,9 @@ export async function GET(request: Request) {
         full_name: fullName,
         avatar_url: avatarUrl,
         role_id: pendingRole?.id ?? null,
-        status: PENDING_STATUS,
         is_active: false,
       })
-      .select("role_id, status, is_active")
+      .select("role_id, is_active")
       .single();
 
     if (!insertError && inserted) {
@@ -115,7 +111,6 @@ export async function GET(request: Request) {
           .maybeSingle();
         role = roleInfo?.name ?? role;
       }
-      status = inserted.status ?? status;
       isActive = inserted.is_active ?? isActive;
     }
   }

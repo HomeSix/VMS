@@ -18,8 +18,6 @@ import { Label } from "@/components/ui/label";
 export default function CmsLoginPage() {
   const router = useRouter();
 
-  const PENDING_STATUS = "pending";
-
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -39,7 +37,7 @@ export default function CmsLoginPage() {
 
     const { data: existing, error: lookupError } = await supabase
       .from("system_user")
-      .select("role_id, status, is_active")
+      .select("role_id, is_active")
       .eq("id", user.id)
       .maybeSingle();
 
@@ -74,10 +72,9 @@ export default function CmsLoginPage() {
           full_name: fullName,
           avatar_url: avatarUrl,
           role_id: pendingRole?.id ?? null,
-          status: PENDING_STATUS,
           is_active: false,
         })
-        .select("role_id, status, is_active")
+        .select("role_id, is_active")
         .single();
 
       if (insertError) {
@@ -86,7 +83,6 @@ export default function CmsLoginPage() {
 
       return {
         role: "pending",
-        status: inserted?.status ?? PENDING_STATUS,
         is_active: inserted?.is_active ?? false,
       };
     }
@@ -103,7 +99,6 @@ export default function CmsLoginPage() {
 
     return {
       role: roleName,
-      status: existing.status ?? PENDING_STATUS,
       is_active: existing.is_active ?? false,
     };
   };
@@ -127,7 +122,7 @@ export default function CmsLoginPage() {
     }
 
     try {
-      const { role, status } = await ensureUserStatus(supabase);
+      await ensureUserStatus(supabase);
       setLoading(false);
 
       router.push("/cms/dashboard");
