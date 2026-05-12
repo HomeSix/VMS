@@ -114,7 +114,7 @@ export default function DashboardPage() {
 
     const { data: userRecord, error: userRecordError } = await supabase
       .from("system_user")
-      .select("isAvailable, is_available")
+      .select("isAvailable")
       .eq("id", user.id)
       .maybeSingle();
 
@@ -123,7 +123,7 @@ export default function DashboardPage() {
     }
 
     const allDay = Boolean(
-      userRecord?.isAvailable ?? userRecord?.is_available ?? true
+      userRecord?.isAvailable ?? true
     );
     setAllDayAvailable(allDay);
 

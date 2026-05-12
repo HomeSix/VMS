@@ -6,9 +6,6 @@ import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/client";
 import { locales, translations, type Locale } from "@/lib/translations";
 
-// Remove this — generateStaticParams belongs in a Server Component, not a "use client" file
-// export function generateStaticParams() { ... }
-
 const DEFAULT_LOCALE: Locale = "en";
 
 const LOCALE_META: Record<Locale, { label: string; name: string }> = {
