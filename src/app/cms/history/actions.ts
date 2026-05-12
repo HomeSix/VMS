@@ -17,6 +17,8 @@ export type HistoryContext = {
   email: string;
 };
 
+export type BookingApprovalStatus = "pending" | "approved" | "rejected";
+
 export type BookingRecord = {
   id: number | null;
   full_name: string | null;
@@ -31,7 +33,24 @@ export type BookingRecord = {
   dial_code: string | null;
   book_teacher: string | null;
   status: boolean | null;
+  book_status: BookingApprovalStatus | null;
 };
+
+export async function updateBookingStatus(
+  id: number,
+  value: boolean
+): Promise<void> {
+  const supabase = await getSupabaseClient();
+
+  const { error } = await supabase
+    .from("bookings")
+    .update({ status: value })
+    .eq("id", id);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
 
 async function getSupabaseClient() {
   const cookieStore = await cookies();
@@ -97,7 +116,7 @@ export async function fetchHistoryBookings(
   let query = supabase
     .from("bookings")
     .select(
-      "id, full_name, phone_number, email, visit_reason, visit_date, start_time, end_time, plate_number, created_at, dial_code, book_teacher, status"
+      "id, full_name, phone_number, email, visit_reason, visit_date, start_time, end_time, plate_number, created_at, dial_code, book_teacher, status, book_status"
     );
 
   if (roleName === "staff") {
@@ -122,6 +141,8 @@ export async function fetchHistoryBookings(
   if (filters.toDate) {
     query = query.lte("visit_date", filters.toDate);
   }
+
+  query = query.in("book_status", ["approved", "rejected"]);
 
   const { data, error } = await query
     .order("visit_date", { ascending: false })

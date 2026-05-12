@@ -153,12 +153,13 @@ export default function TeacherAvailabilityPage() {
     const [availabilityResult, bookingResult] = await Promise.all([
       supabase
         .from("teacher_availability")
-        .select("id, slot_time")
+        .select("id, slot_time")  
         .eq("available_date", dateValue),
       supabase
         .from("bookings")
         .select("start_time, end_time, book_teacher")
         .eq("visit_date", dateValue)
+        .or("book_status.is.null,book_status.eq.pending,book_status.eq.approved")
         .order("start_time", { ascending: true }),
     ]);
 
@@ -312,21 +313,6 @@ export default function TeacherAvailabilityPage() {
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard title="Total teachers" value={summary.total.toString()} desc="" />
-        <StatCard
-          title="Available all day"
-          value={summary.availableAllDay.toString()}
-          desc=""
-        />
-        <StatCard
-          title="Available (slots)"
-          value={summary.availableSlots.toString()}
-          desc=""
-        />
-        <StatCard
-          title="Not available"
-          value={summary.unavailable.toString()}
-          desc=""
-        />
       </div>
 
       <Card>
