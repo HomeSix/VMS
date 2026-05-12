@@ -146,7 +146,40 @@ export default function BookingPage() {
       return
     }
 
-    setSubmitSuccess("Booking submitted successfully.")
+    setSubmitSuccess("Booking submitted successfully.");
+
+    // Send WhatsApp Notification to the teacher
+    type WhatsAppResponse = {
+      success?: boolean;
+      error?: string;
+    };
+    // Use selectedTeacher as phone if available, otherwise fallback
+    let teacherPhone = selectedTeacher && selectedTeacher.match(/^\d+$/) ? selectedTeacher : "601136376608";
+    // Compose a more informative message
+    const message = `A client has booked an appointment with you.\n\nName: ${fullNameValue}\nPhone: ${dialCodeValue}${phoneNumberValue}\nDate: ${selectedDate}\nTime: ${selectedStartTime} - ${selectedEndTime}\nReason: ${visitReasonValue}\n\nPlease review your schedule and prepare accordingly.`;
+    try {
+      const response = await fetch('/api/whatsapp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phone: teacherPhone,
+          message,
+        }),
+      });
+
+      if (!response.ok) {
+        const text = await response.text();
+        console.error('WhatsApp API error:', text);
+        setIsSubmitting(false);
+        return;
+      }
+      const result = (await response.json()) as WhatsAppResponse;
+      if (!result.success) {
+        console.error('Failed to send WhatsApp message:', result.error);
+      }
+    } catch (err) {
+      console.error('Error sending WhatsApp message:', err);
+    }
     setIsSubmitting(false)
   }
 
