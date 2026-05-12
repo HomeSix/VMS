@@ -130,24 +130,24 @@ export default function BookingSchedulePage() {
   }, [])
 
   useEffect(() => {
+    // Only trigger when date or teacher changes
     const loadBookedSlots = async () => {
-      if (!date) {
-        setBookedRanges([])
-        return
+      if (!date || !teacherName) {
+        setBookedRanges([]);
+        return;
       }
-
-      const supabase = createClient()
-
+      const supabase = createClient();
       const { data, error } = await supabase
         .from("bookings")
-        .select("start_time, end_time")
+        .select("start_time, end_time, book_teacher")
         .eq("visit_date", toDateKey(date))
+        .eq("book_teacher", teacherName)
         .or("book_status.is.null,book_status.eq.pending,book_status.eq.approved")
-        .order("start_time", { ascending: true })
+        .order("start_time", { ascending: true });
 
       if (error) {
-        setBookedRanges([])
-        return
+        setBookedRanges([]);
+        return;
       }
 
       const normalized = (data ?? [])
@@ -155,13 +155,13 @@ export default function BookingSchedulePage() {
           start: String(item.start_time).slice(0, 5),
           end: String(item.end_time).slice(0, 5),
         }))
-        .filter((item) => item.start.length === 5 && item.end.length === 5)
+        .filter((item) => item.start.length === 5 && item.end.length === 5);
 
-      setBookedRanges(normalized)
-    }
+      setBookedRanges(normalized);
+    };
 
-    void loadBookedSlots()
-  }, [date])
+    void loadBookedSlots();
+  }, [date, teacherName]);
 
   const dateKey = date ? toDateKey(date) : null
   const teacherParam = teacherName ? `&teacher=${encodeURIComponent(teacherName)}` : ""

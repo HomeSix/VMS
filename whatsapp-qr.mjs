@@ -1,7 +1,5 @@
-console.log('Script started...');
 
-import makeWASocket, { useMultiFileAuthState, fetchLatestBaileysVersion, initAuthCreds } from 'baileys';
-import QRCode from 'qrcode';
+import makeWASocket, { useMultiFileAuthState, fetchLatestBaileysVersion, initAuthCreds, DisconnectReason } from '@whiskeysockets/baileys';
 import fs from 'fs';
 
 async function main() {
@@ -13,21 +11,33 @@ async function main() {
   }
   const { version } = await fetchLatestBaileysVersion();
   const sock = makeWASocket({ version, auth: state });
-  sock.ev.on('creds.update', saveCreds);
-  sock.ev.on('connection.update', async ({ qr, connection }) => {
-    if (qr) {
-      console.clear();
-      console.log("Scan this QR code with WhatsApp (Linked Devices > Link Device):");
-      console.log(await QRCode.toString(qr, { type: 'terminal', small: true }));
+  const phoneNumber = "601136376608"; // replace with your WhatsApp number (E.164, no +, no spaces)
+
+  sock.ev.on('connection.update', async (update) => {
+    const { connection, lastDisconnect, qr } = update;
+    if (connection == "connecting" || !!qr) {
+      try {
+        const pairingCode = await sock.requestPairingCode(phoneNumber);
+        console.log("Your WhatsApp Pairing Code:", pairingCode);
+        // Enter this code into WhatsApp to pair
+      } catch (e) {
+        console.error("Failed to get pairing code:", e);
+      }
+    }
+    if (connection === 'close') {
+      if ((lastDisconnect?.error)?.output?.statusCode === DisconnectReason.restartRequired) {
+        // Optionally restart logic here
+        console.log('Restart required.');
+      } else {
+        console.log('\u274c Connection closed. You may need to retry.');
+        process.exit(1);
+      }
     }
     if (connection === 'open') {
       console.log('\u2705 WhatsApp Connected!');
       process.exit(0);
     }
-    if (connection === 'close') {
-      console.log('\u274c Connection closed. You may need to retry.');
-      process.exit(1);
-    }
   });
+  sock.ev.on("creds.update", saveCreds);
 }
 main();
