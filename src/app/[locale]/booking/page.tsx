@@ -54,6 +54,7 @@ function formatDateForDisplay(dateKey: string, locale: Locale) {
 }
 
 const DIAL_CODES = ["+60"]
+const SECURITY_EMAIL = "security@example.com"
 
 const items = ["Apple", "Banana", "Orange", "Grapes"]
 
@@ -96,7 +97,8 @@ export default function BookingPage() {
   const [fullNameValue, setFullNameValue] = useState("")
   const [dialCodeValue, setDialCodeValue] = useState("+60")
   const [phoneNumberValue, setPhoneNumberValue] = useState("")
-  const [emailValue, setEmailValue] = useState("")
+  const [visitorEmailValue, setVisitorEmailValue] = useState("")
+  const [isWalkIn, setIsWalkIn] = useState(false)
   const [visitReasonValue, setVisitReasonValue] = useState("")
   const [plateNumberValue, setPlateNumberValue] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -131,7 +133,7 @@ export default function BookingPage() {
       full_name: fullNameValue.trim(),
       dial_code: dialCodeValue,
       phone_number: phoneNumberValue.trim(),
-      email: emailValue.trim() || null,
+      email: isWalkIn ? SECURITY_EMAIL : (visitorEmailValue.trim() || null),
       visit_reason: visitReasonValue.trim(),
       visit_date: selectedDate,
       start_time: selectedStartTime,
@@ -268,31 +270,24 @@ export default function BookingPage() {
                 id="email-address"
                 type="email"
                 placeholder={t.email}
-                value={emailValue}
-                onChange={(e) => setEmailValue(e.target.value)}
+                value={isWalkIn ? SECURITY_EMAIL : visitorEmailValue}
+                onChange={(e) => setVisitorEmailValue(e.target.value)}
+                disabled={isWalkIn}
               />
               <InputGroupAddon align="inline-start"></InputGroupAddon>
             </InputGroup>
 
-            <div className="w-64">
-              <Input
-                placeholder="Search..."
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-              />
-
-              {query && (
-                <Command>
-                  <CommandList>
-                    {filtered.map(item => (
-                      <CommandItem key={item}>
-                        {item}
-                      </CommandItem>
-                    ))}
-                  </CommandList>
-                </Command>
-              )}
-            </div>
+            <FieldGroup className="mt-2">
+              <Field orientation="horizontal">
+                <Checkbox
+                  id="walkInCheckbox"
+                  name="walkInCheckbox"
+                  checked={isWalkIn}
+                  onCheckedChange={(checked) => setIsWalkIn(checked === true)}
+                />
+                <FieldLabel htmlFor="walkInCheckbox">{t.walkInCheckboxLabel}</FieldLabel>
+              </Field>
+            </FieldGroup>
 
             <FieldLabel htmlFor="visitationReason">{t.visitationReason}</FieldLabel>
             <Textarea

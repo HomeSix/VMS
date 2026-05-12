@@ -6,6 +6,7 @@ export const config = {
 };
 
 const ADMIN_ROLE = "admin";
+const SECURITY_ROLE = "security";
 const APPROVED_STATUS = true;
 
 // Normalize paths for consistent comparison
@@ -86,7 +87,9 @@ export async function middleware(request: NextRequest) {
   const isDashboard = pathname === "/cms/dashboard";
   const isPermissions = pathname === "/cms/permissions";
   const isDenied = pathname === "/cms/denied";
+  const isApprovals = pathname === "/cms/approvals";
   const isAdmin = roleName === ADMIN_ROLE;
+  const isSecurity = roleName === SECURITY_ROLE;
   const isApproved = isAdmin || userRoleData?.is_active === APPROVED_STATUS;
 
   // Always allow the denied page
@@ -104,6 +107,16 @@ export async function middleware(request: NextRequest) {
   // Admin bypasses all permission checks
   if (isAdmin) {
     return NextResponse.next();
+  }
+
+  // Security role: only dashboard + approvals
+  if (isSecurity) {
+    if (isDashboard || isApprovals) {
+      return NextResponse.next();
+    }
+    const url = request.nextUrl.clone();
+    url.pathname = "/cms/denied";
+    return NextResponse.redirect(url);
   }
 
   // Role-based page permission check for non-admin approved users
