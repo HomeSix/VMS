@@ -11,6 +11,11 @@
     "href": "/cms/permissions"
   },
   {
+    "label": "Booking Approvals",
+    "icon": "Bell",
+    "href": "/cms/approvals"
+  },
+   {
     "label": "Booking History",
     "icon": "FileText",
     "href": "/cms/history"

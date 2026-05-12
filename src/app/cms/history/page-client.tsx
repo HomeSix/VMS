@@ -3,9 +3,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   fetchHistoryBookings,
+  type BookingApprovalStatus,
   type BookingRecord,
   type HistoryContext,
   type HistoryFilters,
+  updateBookingStatus,
 } from "./actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -82,7 +84,7 @@ function toDateKey(date: Date) {
   return `${year}-${month}-${day}`;
 }
 
-function getStatusMeta(status?: boolean | null) {
+function getVisitorStatus(status?: boolean | null) {
   if (status === true) {
     return {
       label: "Checked out",
@@ -100,6 +102,45 @@ function getStatusMeta(status?: boolean | null) {
   return {
     label: "Unknown",
     className: "bg-muted text-muted-foreground border-muted",
+  };
+}
+
+function getApprovalStatus(status?: BookingApprovalStatus | null) {
+  if (status === "approved") {
+    return {
+      label: "Approved",
+      className: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    };
+  }
+
+  if (status === "rejected") {
+    return {
+      label: "Rejected",
+      className: "bg-rose-50 text-rose-700 border-rose-200",
+    };
+  }
+
+  return {
+    label: "Pending",
+    className: "bg-amber-50 text-amber-700 border-amber-200",
+  };
+}
+
+function getBookingStatus(
+  approvalStatus?: BookingApprovalStatus | null,
+  visitStatus?: boolean | null
+) {
+  if (approvalStatus !== "approved") {
+    return getApprovalStatus(approvalStatus);
+  }
+
+  if (visitStatus === true || visitStatus === false) {
+    return getVisitorStatus(visitStatus);
+  }
+
+  return {
+    label: "Approved",
+    className: "bg-emerald-50 text-emerald-700 border-emerald-200",
   };
 }
 
@@ -124,7 +165,10 @@ function buildCsvRows(bookings: BookingRecord[]) {
   ];
 
   const rows = bookings.map((booking) => {
-    const status = getStatusMeta(booking.status).label;
+    const status = getBookingStatus(
+      booking.book_status,
+      booking.status
+    ).label;
     return [
       booking.full_name ?? "-",
       formatPhone(booking.dial_code, booking.phone_number),
@@ -166,6 +210,7 @@ export default function HistoryPage() {
   const [exportFormat, setExportFormat] = useState("pdf");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<number | null>(null);
   const [fromOpen, setFromOpen] = useState(false);
   const [toOpen, setToOpen] = useState(false);
 
@@ -209,6 +254,28 @@ export default function HistoryPage() {
     }
     window.print();
   };
+
+  const handleCheckOut = useCallback(async (booking: BookingRecord) => {
+    if (booking.id == null || booking.status == null) return;
+    if (booking.book_status !== "approved") {
+      setError("Booking must be approved before check-out.");
+      return;
+    }
+    setBusyId(booking.id);
+    setError(null);
+    try {
+      await updateBookingStatus(booking.id, true);
+      setBookings((prev) =>
+        prev.map((item) =>
+          item.id === booking.id ? { ...item, status: true } : item
+        )
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update status.");
+    } finally {
+      setBusyId(null);
+    }
+  }, []);
 
   const showingHint = useMemo(() => {
     if (!context?.role) return "";
@@ -385,7 +452,12 @@ export default function HistoryPage() {
                   </TableRow>
                 ) : (
                   bookings.map((booking) => {
-                    const status = getStatusMeta(booking.status);
+                    const status = getBookingStatus(
+                      booking.book_status,
+                      booking.status
+                    );
+                    const canCheckOut =
+                      booking.book_status === "approved" && booking.status === false;
                     return (
                       <TableRow
                         key={booking.id ?? `${booking.full_name}-${booking.visit_date}`}
@@ -407,28 +479,44 @@ export default function HistoryPage() {
                         </TableCell>
 
                         <TableCell className="text-right">
-                          <Dialog>
-                            {/* FIX: Base UI uses `render`, not `asChild` */}
-                            <DialogTrigger
-                              render={
-                                <Button variant="secondary" size="sm">
-                                  Details
-                                </Button>
-                              }
-                            />
+                          <div className="flex items-center justify-end gap-2">
+                            {canCheckOut ? (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleCheckOut(booking)}
+                                disabled={
+                                  booking.id == null ||
+                                  booking.status == null ||
+                                  booking.book_status !== "approved" ||
+                                  busyId === booking.id
+                                }
+                              >
+                                Check out
+                              </Button>
+                            ) : null}
 
-                            <DialogContent className="max-w-2xl">
-                              <DialogHeader>
-                                <DialogTitle>Booking details</DialogTitle>
-                              </DialogHeader>
+                            <Dialog>
+                              <DialogTrigger
+                                render={
+                                  <Button variant="secondary" size="sm">
+                                    Details
+                                  </Button>
+                                }
+                              />
 
-                              <div className="grid gap-3 sm:grid-cols-2">
-                                <div className="rounded-lg border bg-muted/30 p-3">
-                                  <p className="text-xs text-muted-foreground">Full name</p>
-                                  <p className="text-sm font-semibold">
-                                    {booking.full_name ?? "-"}
-                                  </p>
-                                </div>
+                              <DialogContent className="max-w-2xl">
+                                <DialogHeader>
+                                  <DialogTitle>Booking details</DialogTitle>
+                                </DialogHeader>
+
+                                <div className="grid gap-3 sm:grid-cols-2">
+                                  <div className="rounded-lg border bg-muted/30 p-3">
+                                    <p className="text-xs text-muted-foreground">Full name</p>
+                                    <p className="text-sm font-semibold">
+                                      {booking.full_name ?? "-"}
+                                    </p>
+                                  </div>
 
                                 <div className="rounded-lg border bg-muted/30 p-3">
                                   <p className="text-xs text-muted-foreground">Phone</p>
@@ -454,7 +542,19 @@ export default function HistoryPage() {
                                 <div className="rounded-lg border bg-muted/30 p-3">
                                   <p className="text-xs text-muted-foreground">Status</p>
                                   <p className="text-sm font-semibold">
-                                    {getStatusMeta(booking.status).label}
+                                    {getBookingStatus(
+                                      booking.book_status,
+                                      booking.status
+                                    ).label}
+                                  </p>
+                                </div>
+
+                                <div className="rounded-lg border bg-muted/30 p-3">
+                                  <p className="text-xs text-muted-foreground">
+                                    Approval Status
+                                  </p>
+                                  <p className="text-sm font-semibold">
+                                    {getApprovalStatus(booking.book_status).label}
                                   </p>
                                 </div>
 
@@ -479,17 +579,20 @@ export default function HistoryPage() {
                                   </p>
                                 </div>
 
-                                {String(booking.plate_number ?? "").trim() ? (
-                                  <div className="rounded-lg border bg-muted/30 p-3">
-                                    <p className="text-xs text-muted-foreground">Plate number</p>
-                                    <p className="text-sm font-semibold">
-                                      {booking.plate_number}
-                                    </p>
-                                  </div>
-                                ) : null}
-                              </div>
-                            </DialogContent>
-                          </Dialog>
+                                  {String(booking.plate_number ?? "").trim() ? (
+                                    <div className="rounded-lg border bg-muted/30 p-3">
+                                      <p className="text-xs text-muted-foreground">
+                                        Plate number
+                                      </p>
+                                      <p className="text-sm font-semibold">
+                                        {booking.plate_number}
+                                      </p>
+                                    </div>
+                                  ) : null}
+                                </div>
+                              </DialogContent>
+                            </Dialog>
+                          </div>
                         </TableCell>
                       </TableRow>
                     );

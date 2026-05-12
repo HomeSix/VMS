@@ -138,6 +138,7 @@ export default function BookingPage() {
       end_time: selectedEndTime,
       plate_number: hasCar ? plateNumberValue.trim() : null,
       book_teacher: selectedTeacher ? selectedTeacher.trim() : null,
+      book_status: "pending",
     })
 
     if (error) {

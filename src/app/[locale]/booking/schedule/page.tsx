@@ -142,6 +142,7 @@ export default function BookingSchedulePage() {
         .from("bookings")
         .select("start_time, end_time")
         .eq("visit_date", toDateKey(date))
+        .or("book_status.is.null,book_status.eq.pending,book_status.eq.approved")
         .order("start_time", { ascending: true })
 
       if (error) {

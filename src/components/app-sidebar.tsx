@@ -181,6 +181,10 @@ export function AppSidebar({ userRole }: { userRole?: string }) {
       return null;
     }
 
+    if (item.href === "/cms/approvals" && userRole !== "admin") {
+      return null;
+    }
+
     if (item.submenu) {
       return (
         <DropdownMenu key={index}>
