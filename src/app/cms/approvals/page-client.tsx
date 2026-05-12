@@ -9,7 +9,6 @@ import {
   type BookingApprovalRecord,
   type ApprovalStatus,
 } from "./actions";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -33,7 +32,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { cn } from "@/lib/utils";
 import { loadContext, type ContextData } from "../permissions/actions";
 
 const ADMIN_ROLE = "admin";
@@ -62,27 +60,6 @@ function formatPhone(dialCode?: string | null, phone?: string | null) {
   if (!dial && !number) return "-";
   if (dial && number) return `${dial} ${number}`;
   return dial || number;
-}
-
-function getApprovalStatus(status?: ApprovalStatus | null) {
-  if (status === "approved") {
-    return {
-      label: "Approved",
-      className: "bg-emerald-50 text-emerald-700 border-emerald-200",
-    };
-  }
-
-  if (status === "rejected") {
-    return {
-      label: "Rejected",
-      className: "bg-rose-50 text-rose-700 border-rose-200",
-    };
-  }
-
-  return {
-    label: "Pending",
-    className: "bg-amber-50 text-amber-700 border-amber-200",
-  };
 }
 
 export default function BookingApprovalsPage() {
@@ -208,7 +185,6 @@ export default function BookingApprovalsPage() {
                   <TableHead>Visit date</TableHead>
                   <TableHead>Time</TableHead>
                   <TableHead>Purpose</TableHead>
-                  <TableHead>Status</TableHead>
                   <TableHead className="text-right">Action</TableHead>
                 </TableRow>
               </TableHeader>
@@ -216,7 +192,7 @@ export default function BookingApprovalsPage() {
                 {loading ? (
                   <TableRow>
                     <TableCell
-                      colSpan={6}
+                      colSpan={5}
                       className="py-8 text-center text-sm text-muted-foreground"
                     >
                       Loading bookings...
@@ -225,7 +201,7 @@ export default function BookingApprovalsPage() {
                 ) : bookings.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={6}
+                      colSpan={5}
                       className="py-8 text-center text-sm text-muted-foreground"
                     >
                       No pending bookings.
@@ -233,7 +209,6 @@ export default function BookingApprovalsPage() {
                   </TableRow>
                 ) : (
                   bookings.map((booking) => {
-                    const status = getApprovalStatus(booking.book_status);
                     return (
                       <TableRow key={booking.id ?? booking.created_at ?? booking.full_name}>
                         <TableCell className="font-medium">
@@ -244,14 +219,6 @@ export default function BookingApprovalsPage() {
                           {formatTime(booking.start_time)} - {formatTime(booking.end_time)}
                         </TableCell>
                         <TableCell>{booking.visit_reason ?? "-"}</TableCell>
-                        <TableCell>
-                          <Badge
-                            variant="outline"
-                            className={cn("border", status.className)}
-                          >
-                            {status.label}
-                          </Badge>
-                        </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-2">
                             <Button
