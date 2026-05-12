@@ -13,7 +13,7 @@ export function StatCard({ title, value, desc, className }: StatCardProps) {
   return (
     <div
       className={cn(
-        "rounded-xl border bg-card p-6 text-card-foreground shadow-xs",
+        "rounded-xl border bg-card p-6 text-card-foreground shadow-xs hover:shadow-md hover:border-foreground/20 transition-all duration-200 ease-in-out hover:-translate-y-0.5 cursor-default",
         className
       )}
     >
