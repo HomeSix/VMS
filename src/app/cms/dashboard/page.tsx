@@ -45,6 +45,18 @@ const TIME_SLOTS = Array.from(
   (_, index) => toTime(OPEN_START + index * SLOT_STEP)
 );
 
+type RecentBooking = {
+  id: number;
+  full_name: string;
+  visit_reason: string | null;
+  visit_date: string;
+  start_time: string;
+  end_time: string;
+  created_at: string;
+  book_teacher: string;
+  status: boolean | null;
+};
+
 export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [context, setContext] = useState<ContextData | null>(null);
@@ -64,6 +76,8 @@ export default function DashboardPage() {
   const [availabilitySuccess, setAvailabilitySuccess] = useState<string | null>(
     null
   );
+  const [recentBookings, setRecentBookings] = useState<RecentBooking[]>([]);
+  const [recentLoading, setRecentLoading] = useState(false);
 
   const loadContextData = useCallback(async () => {
     setLoading(true);
@@ -145,6 +159,51 @@ export default function DashboardPage() {
     if (!context || context.role === ADMIN_ROLE) return;
     void loadAvailability();
   }, [context, availabilityDate, loadAvailability]);
+
+  useEffect(() => {
+    if (!context) return;
+    let isMounted = true;
+
+    const loadRecent = async () => {
+      setRecentLoading(true);
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user || !isMounted) {
+        setRecentLoading(false);
+        return;
+      }
+
+      let staffName = "";
+      if (context.role !== ADMIN_ROLE) {
+        const { data: userData } = await supabase
+          .from("system_user")
+          .select("full_name")
+          .eq("id", user.id)
+          .maybeSingle();
+        staffName = String(userData?.full_name ?? "").trim();
+      }
+
+      let query = supabase
+        .from("bookings")
+        .select("id, full_name, visit_reason, visit_date, start_time, end_time, created_at, book_teacher, status")
+        .order("created_at", { ascending: false })
+        .limit(5);
+
+      if (staffName) {
+        query = query.eq("book_teacher", staffName);
+      }
+
+      const { data } = await query;
+      if (isMounted) {
+        setRecentBookings(data as RecentBooking[] ?? []);
+        setRecentLoading(false);
+      }
+    };
+
+    void loadRecent();
+    return () => { isMounted = false; };
+  }, [context, supabase]);
 
   const handleAllDayChange = useCallback((checked: boolean) => {
     setAllDayAvailable(checked);
@@ -373,71 +432,19 @@ export default function DashboardPage() {
         },
       ];
 
-  const recentActivity = isAdmin
-    ? [
-        {
-          title: "Booking created",
-          detail: "Sarah L. with Dr. Hadi - 10:30",
-          tag: "Booking",
-          time: "09:05",
-        },
-        {
-          title: "Schedule updated",
-          detail: "Room 4 blocked for maintenance",
-          tag: "Update",
-          time: "08:52",
-        },
-        {
-          title: "Cancellation",
-          detail: "Aiman K. 11:00, reason: sick",
-          tag: "Cancel",
-          time: "08:31",
-        },
-        {
-          title: "Walk-in added",
-          detail: "Referral from Clinic B - 09:45",
-          tag: "Walk-in",
-          time: "08:10",
-        },
-        {
-          title: "No-show marked",
-          detail: "Ivy T. 08:00",
-          tag: "Alert",
-          time: "08:02",
-        },
-      ]
-    : [
-        {
-          title: "Check-in complete",
-          detail: "Nur A. 09:00",
-          tag: "Check-in",
-          time: "09:12",
-        },
-        {
-          title: "Room change",
-          detail: "Shift to Room 2 for 10:00",
-          tag: "Update",
-          time: "08:57",
-        },
-        {
-          title: "New booking",
-          detail: "Walk-in added for 10:45",
-          tag: "Booking",
-          time: "08:41",
-        },
-        {
-          title: "Reschedule",
-          detail: "Hafiz R. moved to 13:30",
-          tag: "Update",
-          time: "08:22",
-        },
-        {
-          title: "Prep needed",
-          detail: "Bring imaging files for 11:15",
-          tag: "Task",
-          time: "08:10",
-        },
-      ];
+  const formatTime = (createdAt: string) => {
+    const d = new Date(createdAt);
+    const now = new Date();
+    const isToday =
+      d.getFullYear() === now.getFullYear() &&
+      d.getMonth() === now.getMonth() &&
+      d.getDate() === now.getDate();
+    if (isToday) {
+      return d.toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit", hour12: false });
+    }
+    return d.toLocaleDateString("en-MY", { month: "short", day: "numeric" }) +
+      " " + d.toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit", hour12: false });
+  };
 
   const trendSeries = isAdmin
     ? [
@@ -669,25 +676,76 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {recentActivity.map((item) => (
-                <div
-                  key={`${item.title}-${item.time}`}
-                  className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border/60 p-3"
-                >
-                  <div>
-                    <p className="text-sm font-medium">{item.title}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {item.detail}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="secondary">{item.tag}</Badge>
-                    <span className="text-xs text-muted-foreground">
-                      {item.time}
-                    </span>
-                  </div>
+              {recentLoading ? (
+                <div className="flex items-center justify-center h-20">
+                  <div className="w-5 h-5 rounded-full border-2 border-primary border-t-transparent animate-spin" />
                 </div>
-              ))}
+              ) : recentBookings.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-6">
+                  No bookings yet.
+                </p>
+              ) : (
+                recentBookings.map((booking, idx) => {
+                  const initial = (booking.full_name ?? "?").charAt(0).toUpperCase();
+                  const colorIdx = (booking.id ?? idx) % 6;
+                  const colors = [
+                    "bg-blue-500",
+                    "bg-emerald-500",
+                    "bg-violet-500",
+                    "bg-amber-500",
+                    "bg-rose-500",
+                    "bg-cyan-500",
+                  ];
+                  const timeLabel = (() => {
+                    const diff = Date.now() - new Date(booking.created_at).getTime();
+                    const mins = Math.floor(diff / 60000);
+                    if (mins < 1) return "Just now";
+                    if (mins < 60) return `${mins}m ago`;
+                    const hours = Math.floor(mins / 60);
+                    if (hours < 24) return `${hours}h ago`;
+                    return formatTime(booking.created_at);
+                  })();
+                  return (
+                    <div
+                      key={booking.id}
+                      className="flex items-start gap-3 rounded-lg border border-border/60 p-3 transition-all duration-200 ease-in-out hover:-translate-y-0.5 hover:shadow-md hover:border-foreground/20 cursor-default"
+                    >
+                      <div
+                        className={`shrink-0 w-9 h-9 rounded-full ${colors[colorIdx]} flex items-center justify-center text-white text-sm font-semibold`}
+                      >
+                        {initial}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-sm font-medium truncate">
+                            {booking.full_name}
+                          </p>
+                          <span className="shrink-0 text-[10px] text-muted-foreground">
+                            {timeLabel}
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Scheduled with <span className="font-medium text-foreground">{booking.book_teacher}</span>
+                          {booking.start_time && (
+                            <> at <span className="font-medium text-foreground">{booking.start_time.slice(0, 5)}</span></>
+                          )}
+                          {booking.visit_reason && (
+                            <> &middot; {booking.visit_reason}</>
+                          )}
+                        </p>
+                        <div className="mt-1.5">
+                          <Badge
+                            variant={booking.status ? "default" : "secondary"}
+                            className="text-[10px] px-1.5 py-0 h-auto"
+                          >
+                            {booking.status ? "Confirmed" : "Pending"}
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
             </div>
           </CardContent>
         </Card>

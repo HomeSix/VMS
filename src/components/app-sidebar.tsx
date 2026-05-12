@@ -191,12 +191,10 @@ export function AppSidebar({ userRole }: { userRole?: string }) {
           <DropdownMenuTrigger className="w-full flex">
             <div className="group/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md px-2 py-1 text-sm font-medium hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground peer/menu-button">
               <item.icon className="h-4 w-4" />
-              {!collapsed && (
-                <>
-                  <span className="ml-2">{item.label}</span>
-                  <ChevronRight className="ml-auto h-4 w-4" />
-                </>
-              )}
+              <span className="ml-2 transition-all duration-200 ease-linear group-data-[collapsible=offcanvas]:w-0 group-data-[collapsible=offcanvas]:opacity-0 group-data-[collapsible=offcanvas]:overflow-hidden">
+                {item.label}
+              </span>
+              <ChevronRight className="ml-auto h-4 w-4 transition-all duration-200 ease-linear group-data-[collapsible=offcanvas]:w-0 group-data-[collapsible=offcanvas]:opacity-0 group-data-[collapsible=offcanvas]:overflow-hidden" />
             </div>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-48" side={collapsed ? "right" : "bottom"}>
@@ -224,20 +222,18 @@ export function AppSidebar({ userRole }: { userRole?: string }) {
           )}
         >
           <item.icon className={cn("h-4 w-4", isActive && "text-white")} />
-          {!collapsed && (
-            <>
-              <span className="ml-2 flex-1 text-left">{item.label}</span>
-              {item.badge && (
-                <span className={cn(
-                  "ml-auto rounded-full px-2 py-0.5 text-xs",
-                  isActive
-                    ? "bg-white text-blue-500"
-                    : "bg-destructive text-primary-foreground"
-                )}>
-                  {item.badge}
-                </span>
-              )}
-            </>
+          <span className="ml-2 flex-1 text-left transition-all duration-200 ease-linear group-data-[collapsible=offcanvas]:w-0 group-data-[collapsible=offcanvas]:opacity-0 group-data-[collapsible=offcanvas]:overflow-hidden">
+            {item.label}
+          </span>
+          {item.badge && (
+            <span className={cn(
+              "ml-auto rounded-full px-2 py-0.5 text-xs transition-all duration-200 ease-linear group-data-[collapsible=offcanvas]:w-0 group-data-[collapsible=offcanvas]:opacity-0 group-data-[collapsible=offcanvas]:overflow-hidden",
+              isActive
+                ? "bg-white text-blue-500"
+                : "bg-destructive text-primary-foreground"
+            )}>
+              {item.badge}
+            </span>
           )}
         </div>
         {collapsed && (
@@ -263,7 +259,7 @@ export function AppSidebar({ userRole }: { userRole?: string }) {
             alt="School Badge"
             className="w-12 h-auto object-contain mb-2"
           />
-          {!collapsed && (
+          <div className="overflow-hidden transition-all duration-200 ease-linear group-data-[collapsible=offcanvas]:max-h-0 group-data-[collapsible=offcanvas]:opacity-0 group-data-[collapsible=offcanvas]:invisible">
             <div className="text-center">
               <h3 className="text-xs font-bold  leading-tight">
                 SK SERI TELOK
@@ -272,7 +268,7 @@ export function AppSidebar({ userRole }: { userRole?: string }) {
                 PARIT YAANI
               </h3>
             </div>
-          )}
+          </div>
         </div>
       </SidebarHeader>
 
@@ -303,7 +299,7 @@ export function AppSidebar({ userRole }: { userRole?: string }) {
             )}
           >
             <LogOut className="h-4 w-4" />
-            {!collapsed && <span className="ml-2">Logout</span>}
+            <span className="ml-2 transition-all duration-200 ease-linear group-data-[collapsible=offcanvas]:w-0 group-data-[collapsible=offcanvas]:opacity-0 group-data-[collapsible=offcanvas]:overflow-hidden">Logout</span>
           </Button>
           {collapsed && (
             <div className="absolute left-full ml-2 top-1/2 -translate-y-1/2 z-50 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
