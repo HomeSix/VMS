@@ -19,7 +19,6 @@ import {
   type ContextData,
 } from "./actions";
 import { PROTECTED_PAGES } from "./constants";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -274,7 +273,6 @@ function StaffAccessTab({ onError }: { onError: (msg: string | null) => void }) 
               <TableHeader>
                 <TableRow>
                   <TableHead>Staff</TableHead>
-                  <TableHead>Status</TableHead>
                   <TableHead>Role</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -301,11 +299,6 @@ function StaffAccessTab({ onError }: { onError: (msg: string | null) => void }) 
                             <p className="text-xs text-muted-foreground">{row.email || "No email"}</p>
                           </div>
                         </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={isPending ? "outline" : "secondary"}>
-                          {isPending ? "Pending" : "Approved"}
-                        </Badge>
                       </TableCell>
                       <TableCell>
                         <Select
