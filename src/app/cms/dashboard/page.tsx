@@ -396,31 +396,37 @@ export default function DashboardPage() {
           title: "Total appointments",
           value: String(adminSnapshot.totalAppointments),
           desc: "Bookings for today",
+          accent: "emerald" as const,
         },
         {
           title: "New bookings",
           value: String(adminSnapshot.newBookings),
           desc: "Registered today",
+          accent: "sky" as const,
         },
         {
           title: "Total staff",
           value: String(adminSnapshot.totalStaff),
           desc: "All system users",
+          accent: "violet" as const,
         },
         {
           title: "Pending staff",
           value: String(adminSnapshot.pendingStaff),
           desc: "Awaiting approval",
+          accent: "amber" as const,
         },
         {
           title: "Check-ins today",
           value: String(adminSnapshot.checkIns),
           desc: "Visitors checked in",
+          accent: "emerald" as const,
         },
         {
           title: "Pending approvals",
           value: String(adminSnapshot.pendingApprovals),
           desc: "Booking requests",
+          accent: "rose" as const,
         },
       ];
     }
@@ -430,21 +436,25 @@ export default function DashboardPage() {
           title: "My appointments",
           value: String(staffSnapshot.myAppointments),
           desc: "For today",
+          accent: "emerald" as const,
         },
         {
           title: "Check-ins done",
           value: String(staffSnapshot.checkInsDone),
           desc: "Completed",
+          accent: "sky" as const,
         },
         {
           title: "Pending check-ins",
           value: String(staffSnapshot.pendingCheckIns),
           desc: "Not yet arrived",
+          accent: "amber" as const,
         },
         {
           title: "Cancellations",
           value: String(staffSnapshot.cancellations),
           desc: "Rejected bookings",
+          accent: "rose" as const,
         },
       ];
     }
@@ -539,26 +549,31 @@ export default function DashboardPage() {
           title: "Approved today",
           value: String(adminHealth.approvedToday),
           desc: "Confirmed bookings",
+          accent: "emerald" as const,
         },
         {
           title: "Rejected today",
           value: String(adminHealth.rejectedToday),
           desc: "Declined bookings",
+          accent: "rose" as const,
         },
         {
           title: "Teachers available",
           value: String(adminHealth.teachersAvailable),
           desc: "Marked as available",
+          accent: "violet" as const,
         },
         {
           title: "Peak hour",
           value: adminHealth.peakBookings > 0 ? adminHealth.peakHour : "N/A",
           desc: adminHealth.peakBookings > 0 ? `${adminHealth.peakBookings} bookings` : "No bookings today",
+          accent: "amber" as const,
         },
         {
           title: "With vehicles",
           value: String(adminHealth.bookingsWithVehicles),
           desc: "Visitors arriving by car",
+          accent: "sky" as const,
         },
       ];
     }
@@ -568,21 +583,25 @@ export default function DashboardPage() {
           title: "My approved",
           value: String(staffHealth.myApproved),
           desc: "Confirmed for today",
+          accent: "emerald" as const,
         },
         {
           title: "My rejected",
           value: String(staffHealth.myRejected),
           desc: "Declined bookings",
+          accent: "rose" as const,
         },
         {
           title: "Next appointment",
           value: staffHealth.nextAppointment,
           desc: "Earliest today",
+          accent: "sky" as const,
         },
         {
           title: "Slots available",
           value: String(staffHealth.availableSlotsLeft),
           desc: "Open for booking",
+          accent: "amber" as const,
         },
       ];
     }
@@ -647,8 +666,11 @@ export default function DashboardPage() {
         <Badge variant="outline">{viewLabel}</Badge>
       </div>
 
+      <div className="h-1 w-full rounded-full bg-gradient-to-r from-emerald-500/40 via-sky-500/40 to-violet-500/40" />
+
       <Card>
         <CardHeader>
+          <div className="h-1 w-10 rounded-full bg-emerald-500/40 mb-1" />
           <CardTitle>Today at a glance</CardTitle>
           <CardDescription>
             Live snapshot of appointments and daily flow.
@@ -676,6 +698,7 @@ export default function DashboardPage() {
                   title={item.title}
                   value={item.value}
                   desc={item.desc}
+                  accent={(item as any).accent}
                 />
               ))}
             </div>
@@ -686,6 +709,7 @@ export default function DashboardPage() {
       {!isAdmin && (
         <Card>
           <CardHeader>
+            <div className="h-1 w-10 rounded-full bg-amber-500/40 mb-1" />
             <CardTitle>My availability</CardTitle>
             <CardDescription>
               Set the hours you can accept visitor appointments (08:00 - 16:30).
@@ -783,6 +807,7 @@ export default function DashboardPage() {
 
       <Card>
         <CardHeader>
+          <div className="h-1 w-10 rounded-full bg-indigo-500/40 mb-1" />
           <CardTitle>Schedule health</CardTitle>
           <CardDescription>
             Capacity, bottlenecks, and schedule risks.
@@ -810,6 +835,7 @@ export default function DashboardPage() {
                   title={item.title}
                   value={item.value}
                   desc={item.desc}
+                  accent={(item as any).accent}
                 />
               ))}
             </div>
@@ -820,6 +846,7 @@ export default function DashboardPage() {
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
+            <div className="h-1 w-10 rounded-full bg-sky-500/40 mb-1" />
             <CardTitle>Recent activity</CardTitle>
             <CardDescription>
               Latest updates that need attention.
@@ -903,6 +930,7 @@ export default function DashboardPage() {
 
         <Card>
           <CardHeader>
+            <div className="h-1 w-10 rounded-full bg-violet-500/40 mb-1" />
             <CardTitle>KPI trends</CardTitle>
             <CardDescription>
               Week-over-week view of key metrics.
