@@ -15,8 +15,31 @@ import {
 } from "@/components/ui/card";
 import { StatCard } from "@/components/ui/stat-card";
 import { createClient } from "@/lib/client";
+import {
+  fetchAdminSnapshot,
+  fetchStaffSnapshot,
+  fetchAdminScheduleHealth,
+  fetchStaffScheduleHealth,
+  fetchAdminTrends,
+  fetchStaffTrends,
+  type AdminSnapshot,
+  type StaffSnapshot,
+  type AdminScheduleHealth,
+  type StaffScheduleHealth,
+  type TrendSeries,
+} from "./actions";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  CartesianGrid,
+} from "recharts";
 
 const ADMIN_ROLE = "admin";
+const STAFF_ROLE = "staff";
 const APPROVED_STATUS = true;
 
 const OPEN_START = 8 * 60;
@@ -78,6 +101,14 @@ export default function DashboardPage() {
   );
   const [recentBookings, setRecentBookings] = useState<RecentBooking[]>([]);
   const [recentLoading, setRecentLoading] = useState(false);
+  const [adminSnapshot, setAdminSnapshot] = useState<AdminSnapshot | null>(null);
+  const [staffSnapshot, setStaffSnapshot] = useState<StaffSnapshot | null>(null);
+  const [snapshotLoading, setSnapshotLoading] = useState(false);
+  const [adminHealth, setAdminHealth] = useState<AdminScheduleHealth | null>(null);
+  const [staffHealth, setStaffHealth] = useState<StaffScheduleHealth | null>(null);
+  const [healthLoading, setHealthLoading] = useState(false);
+  const [trendSeries, setTrendSeries] = useState<TrendSeries[]>([]);
+  const [trendLoading, setTrendLoading] = useState(false);
 
   const loadContextData = useCallback(async () => {
     setLoading(true);
@@ -205,6 +236,81 @@ export default function DashboardPage() {
     return () => { isMounted = false; };
   }, [context, supabase]);
 
+  useEffect(() => {
+    if (!context) return;
+    const isAdminRole = context.role === ADMIN_ROLE;
+    const isApprovedUser = isAdminRole || context.is_active === APPROVED_STATUS;
+    if (!isApprovedUser) return;
+
+    const loadSnapshot = async () => {
+      setSnapshotLoading(true);
+      try {
+        if (isAdminRole) {
+          const data = await fetchAdminSnapshot();
+          setAdminSnapshot(data);
+        } else {
+          const data = await fetchStaffSnapshot();
+          setStaffSnapshot(data);
+        }
+      } catch {
+        // silently fail
+      }
+      setSnapshotLoading(false);
+    };
+
+    void loadSnapshot();
+  }, [context]);
+
+  useEffect(() => {
+    if (!context) return;
+    const isAdminRole = context.role === ADMIN_ROLE;
+    const isApprovedUser = isAdminRole || context.is_active === APPROVED_STATUS;
+    if (!isApprovedUser) return;
+
+    const loadHealth = async () => {
+      setHealthLoading(true);
+      try {
+        if (isAdminRole) {
+          const data = await fetchAdminScheduleHealth();
+          setAdminHealth(data);
+        } else {
+          const data = await fetchStaffScheduleHealth();
+          setStaffHealth(data);
+        }
+      } catch {
+        // silently fail
+      }
+      setHealthLoading(false);
+    };
+
+    void loadHealth();
+  }, [context]);
+
+  useEffect(() => {
+    if (!context) return;
+    const isAdminRole = context.role === ADMIN_ROLE;
+    const isApprovedUser = isAdminRole || context.is_active === APPROVED_STATUS;
+    if (!isApprovedUser) return;
+
+    const loadTrends = async () => {
+      setTrendLoading(true);
+      try {
+        if (isAdminRole) {
+          const data = await fetchAdminTrends();
+          setTrendSeries(data);
+        } else {
+          const data = await fetchStaffTrends();
+          setTrendSeries(data);
+        }
+      } catch {
+        setTrendSeries([]);
+      }
+      setTrendLoading(false);
+    };
+
+    void loadTrends();
+  }, [context]);
+
   const handleAllDayChange = useCallback((checked: boolean) => {
     setAllDayAvailable(checked);
     setAvailabilitySuccess(null);
@@ -281,6 +387,99 @@ export default function DashboardPage() {
     setAvailabilitySaving(false);
   }, [allDayAvailable, availabilityDate, availabilitySlots, supabase]);
 
+  const isAdmin = context?.role === ADMIN_ROLE;
+
+  const snapshotItems = useMemo(() => {
+    if (isAdmin && adminSnapshot) {
+      return [
+        {
+          title: "Total appointments",
+          value: String(adminSnapshot.totalAppointments),
+          desc: "Bookings for today",
+          accent: "emerald" as const,
+        },
+        {
+          title: "New bookings",
+          value: String(adminSnapshot.newBookings),
+          desc: "Registered today",
+          accent: "sky" as const,
+        },
+        {
+          title: "Total staff",
+          value: String(adminSnapshot.totalStaff),
+          desc: "All system users",
+          accent: "violet" as const,
+        },
+        {
+          title: "Pending staff",
+          value: String(adminSnapshot.pendingStaff),
+          desc: "Awaiting approval",
+          accent: "amber" as const,
+        },
+        {
+          title: "Check-ins today",
+          value: String(adminSnapshot.checkIns),
+          desc: "Visitors checked in",
+          accent: "emerald" as const,
+        },
+        {
+          title: "Pending approvals",
+          value: String(adminSnapshot.pendingApprovals),
+          desc: "Booking requests",
+          accent: "rose" as const,
+        },
+      ];
+    }
+    if (!isAdmin && staffSnapshot) {
+      return [
+        {
+          title: "My appointments",
+          value: String(staffSnapshot.myAppointments),
+          desc: "For today",
+          accent: "emerald" as const,
+        },
+        {
+          title: "Check-ins done",
+          value: String(staffSnapshot.checkInsDone),
+          desc: "Completed",
+          accent: "sky" as const,
+        },
+        {
+          title: "Pending check-ins",
+          value: String(staffSnapshot.pendingCheckIns),
+          desc: "Not yet arrived",
+          accent: "amber" as const,
+        },
+        {
+          title: "Cancellations",
+          value: String(staffSnapshot.cancellations),
+          desc: "Rejected bookings",
+          accent: "rose" as const,
+        },
+      ];
+    }
+    return [];
+  }, [isAdmin, adminSnapshot, staffSnapshot]);
+
+  const chartData = useMemo(() => {
+    if (trendSeries.length === 0) return [];
+    const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    const today = new Date().getDay();
+    const adjustedToday = today === 0 ? 7 : today;
+    const labels: string[] = [];
+    for (let i = 6; i >= 0; i--) {
+      const idx = (adjustedToday - i + 7) % 7;
+      labels.push(days[idx === 0 ? 6 : idx - 1]);
+    }
+    return labels.map((day, i) => {
+      const point: Record<string, string | number> = { day };
+      for (const s of trendSeries) {
+        point[s.label] = s.values[i] ?? 0;
+      }
+      return point;
+    });
+  }, [trendSeries]);
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -299,8 +498,9 @@ export default function DashboardPage() {
     );
   }
 
-  const isAdmin = context?.role === ADMIN_ROLE;
   const isApproved = isAdmin || context?.is_active === APPROVED_STATUS;
+  const isStaff = context?.role === STAFF_ROLE;
+  const isEditorial = !isAdmin && !isStaff && isApproved;
 
   if (!isApproved) {
     return (
@@ -335,102 +535,78 @@ export default function DashboardPage() {
     );
   }
 
-  const viewLabel = isAdmin ? "Admin view" : "Staff view";
+  const viewLabel = isAdmin ? "Admin view" : isStaff ? "Staff view" : "Viewer";
   const viewDescription = isAdmin
     ? "Operations overview for today."
-    : "Your shift overview and live queue flow.";
+    : isStaff
+      ? "Your shift overview and live queue flow."
+      : "Welcome to the dashboard.";
 
-  const todayAtGlance = isAdmin
-    ? [
+  const scheduleHealth = (() => {
+    if (isAdmin && adminHealth) {
+      return [
         {
-          title: "Total appointments",
-          value: "126",
-          desc: "18 within next 2 hours",
+          title: "Approved today",
+          value: String(adminHealth.approvedToday),
+          desc: "Confirmed bookings",
+          accent: "emerald" as const,
         },
         {
-          title: "New bookings",
-          value: "34",
-          desc: "+9% vs yesterday",
+          title: "Rejected today",
+          value: String(adminHealth.rejectedToday),
+          desc: "Declined bookings",
+          accent: "rose" as const,
         },
         {
-          title: "Cancellations",
-          value: "7",
-          desc: "2 no-shows",
+          title: "Teachers available",
+          value: String(adminHealth.teachersAvailable),
+          desc: "Marked as available",
+          accent: "violet" as const,
         },
         {
-          title: "Walk-ins",
-          value: "11",
-          desc: "5 pending check-in",
-        },
-      ]
-    : [
-        {
-          title: "My appointments",
-          value: "12",
-          desc: "Next at 10:30",
+          title: "Peak hour",
+          value: adminHealth.peakBookings > 0 ? adminHealth.peakHour : "N/A",
+          desc: adminHealth.peakBookings > 0 ? `${adminHealth.peakBookings} bookings` : "No bookings today",
+          accent: "amber" as const,
         },
         {
-          title: "Check-ins done",
-          value: "7",
-          desc: "5 remaining",
-        },
-        {
-          title: "Cancellations",
-          value: "1",
-          desc: "No-shows: 0",
-        },
-        {
-          title: "Walk-ins",
-          value: "2",
-          desc: "1 waiting",
+          title: "With vehicles",
+          value: String(adminHealth.bookingsWithVehicles),
+          desc: "Visitors arriving by car",
+          accent: "sky" as const,
         },
       ];
-
-  const scheduleHealth = isAdmin
-    ? [
+    }
+    if (!isAdmin && staffHealth) {
+      return [
         {
-          title: "Utilization",
-          value: "78%",
-          desc: "Peak 11:00-14:00",
+          title: "My approved",
+          value: String(staffHealth.myApproved),
+          desc: "Confirmed for today",
+          accent: "emerald" as const,
         },
         {
-          title: "Open slots",
-          value: "22",
-          desc: "Most after 16:00",
+          title: "My rejected",
+          value: String(staffHealth.myRejected),
+          desc: "Declined bookings",
+          accent: "rose" as const,
         },
         {
-          title: "Overbooked slots",
-          value: "3",
-          desc: "Dental, Physio",
+          title: "Next appointment",
+          value: staffHealth.nextAppointment,
+          desc: "Earliest today",
+          accent: "sky" as const,
         },
         {
-          title: "Avg wait time",
-          value: "12 min",
-          desc: "-3 min vs last week",
-        },
-      ]
-    : [
-        {
-          title: "Utilization",
-          value: "82%",
-          desc: "Peak 11:00-13:00",
-        },
-        {
-          title: "Open slots",
-          value: "3",
-          desc: "After 15:00",
-        },
-        {
-          title: "Late starts",
-          value: "1",
-          desc: "Avg delay 6 min",
-        },
-        {
-          title: "Room changes",
-          value: "2",
-          desc: "Confirm room swaps",
+          title: "Slots available",
+          value: String(staffHealth.availableSlotsLeft),
+          desc: "Open for booking",
+          accent: "amber" as const,
         },
       ];
+    }
+    return [];
+  })();
 
   const formatTime = (createdAt: string) => {
     const d = new Date(createdAt);
@@ -446,75 +622,39 @@ export default function DashboardPage() {
       " " + d.toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit", hour12: false });
   };
 
-  const trendSeries = isAdmin
-    ? [
-        {
-          label: "Bookings",
-          change: "+6% WoW",
-          caption: "Total bookings last 7 days",
-          values: [64, 70, 68, 72, 78, 74, 80],
-          accent: "bg-emerald-500/70",
-        },
-        {
-          label: "Cancellations",
-          change: "-12% WoW",
-          caption: "Lower is better",
-          values: [8, 6, 7, 5, 6, 4, 5],
-          accent: "bg-rose-500/70",
-        },
-        {
-          label: "Avg wait time",
-          change: "-3 min",
-          caption: "Minutes between check-in and consult",
-          values: [15, 14, 13, 12, 12, 11, 12],
-          accent: "bg-sky-500/70",
-        },
-      ]
-    : [
-        {
-          label: "My appointments",
-          change: "+2% WoW",
-          caption: "Appointments handled",
-          values: [10, 11, 9, 12, 13, 12, 14],
-          accent: "bg-emerald-500/70",
-        },
-        {
-          label: "On-time start",
-          change: "+3% WoW",
-          caption: "Percent of visits starting on time",
-          values: [90, 92, 88, 93, 95, 94, 96],
-          accent: "bg-indigo-500/70",
-        },
-        {
-          label: "Avg turnaround",
-          change: "-2 min",
-          caption: "Minutes per visit",
-          values: [18, 17, 16, 15, 15, 14, 15],
-          accent: "bg-amber-500/70",
-        },
-      ];
-
-  const renderTrendBars = (values: number[], accent: string) => {
-    const maxValue = Math.max(...values, 1);
+  if (isEditorial) {
     return (
-      <div className="flex h-16 items-end gap-2">
-        {values.map((value, index) => {
-          const height = Math.round((value / maxValue) * 100);
-          return (
-            <div
-              key={index}
-              className="flex h-full flex-1 items-end rounded-md bg-muted/40"
-            >
-              <div
-                className={`w-full rounded-md ${accent}`}
-                style={{ height: `${height}%` }}
-              />
+      <div className="space-y-6">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="text-xl font-semibold">Dashboard</h1>
+            <p className="text-sm text-muted-foreground">Welcome to the Visitor Management System.</p>
+          </div>
+          <Badge variant="outline">Viewer</Badge>
+        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Welcome</CardTitle>
+            <CardDescription>
+              You have view access to read data and reports.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col items-center gap-4 py-8 text-center">
+              <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
+                <svg className="w-8 h-8 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                </svg>
+              </div>
+              <p className="text-sm text-muted-foreground max-w-md">
+                Browse reports, booking history, and system data from the sidebar.
+              </p>
             </div>
-          );
-        })}
+          </CardContent>
+        </Card>
       </div>
     );
-  };
+  }
 
   return (
     <div className="space-y-6">
@@ -526,30 +666,50 @@ export default function DashboardPage() {
         <Badge variant="outline">{viewLabel}</Badge>
       </div>
 
+      <div className="h-1 w-full rounded-full bg-gradient-to-r from-emerald-500/40 via-sky-500/40 to-violet-500/40" />
+
       <Card>
         <CardHeader>
+          <div className="h-1 w-10 rounded-full bg-emerald-500/40 mb-1" />
           <CardTitle>Today at a glance</CardTitle>
           <CardDescription>
             Live snapshot of appointments and daily flow.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {todayAtGlance.map((item) => (
-              <StatCard
-                key={item.title}
-                title={item.title}
-                value={item.value}
-                desc={item.desc}
-              />
-            ))}
-          </div>
+          {snapshotLoading ? (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {Array.from({ length: isAdmin ? 6 : 4 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="rounded-xl border bg-card p-6 shadow-xs space-y-2"
+                >
+                  <div className="h-3 w-20 rounded bg-muted animate-pulse" />
+                  <div className="h-7 w-12 rounded bg-muted animate-pulse" />
+                  <div className="h-3 w-16 rounded bg-muted animate-pulse" />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className={`grid gap-4 sm:grid-cols-2 ${isAdmin ? "lg:grid-cols-3" : "lg:grid-cols-4"}`}>
+              {snapshotItems.map((item) => (
+                <StatCard
+                  key={item.title}
+                  title={item.title}
+                  value={item.value}
+                  desc={item.desc}
+                  accent={(item as any).accent}
+                />
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 
       {!isAdmin && (
         <Card>
           <CardHeader>
+            <div className="h-1 w-10 rounded-full bg-amber-500/40 mb-1" />
             <CardTitle>My availability</CardTitle>
             <CardDescription>
               Set the hours you can accept visitor appointments (08:00 - 16:30).
@@ -647,28 +807,46 @@ export default function DashboardPage() {
 
       <Card>
         <CardHeader>
+          <div className="h-1 w-10 rounded-full bg-indigo-500/40 mb-1" />
           <CardTitle>Schedule health</CardTitle>
           <CardDescription>
             Capacity, bottlenecks, and schedule risks.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {scheduleHealth.map((item) => (
-              <StatCard
-                key={item.title}
-                title={item.title}
-                value={item.value}
-                desc={item.desc}
-              />
-            ))}
-          </div>
+          {healthLoading ? (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {Array.from({ length: isAdmin ? 5 : 4 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="rounded-xl border bg-card p-6 shadow-xs space-y-2"
+                >
+                  <div className="h-3 w-20 rounded bg-muted animate-pulse" />
+                  <div className="h-7 w-12 rounded bg-muted animate-pulse" />
+                  <div className="h-3 w-16 rounded bg-muted animate-pulse" />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className={`grid gap-4 sm:grid-cols-2 ${isAdmin ? "lg:grid-cols-5" : "lg:grid-cols-4"}`}>
+              {scheduleHealth.map((item) => (
+                <StatCard
+                  key={item.title}
+                  title={item.title}
+                  value={item.value}
+                  desc={item.desc}
+                  accent={(item as any).accent}
+                />
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
+            <div className="h-1 w-10 rounded-full bg-sky-500/40 mb-1" />
             <CardTitle>Recent activity</CardTitle>
             <CardDescription>
               Latest updates that need attention.
@@ -752,31 +930,72 @@ export default function DashboardPage() {
 
         <Card>
           <CardHeader>
+            <div className="h-1 w-10 rounded-full bg-violet-500/40 mb-1" />
             <CardTitle>KPI trends</CardTitle>
             <CardDescription>
               Week-over-week view of key metrics.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {trendSeries.map((series) => (
-                <div
-                  key={series.label}
-                  className="rounded-lg border border-border/60 p-3"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-sm font-medium">{series.label}</p>
-                    <Badge variant="outline">{series.change}</Badge>
-                  </div>
-                  <div className="mt-3">
-                    {renderTrendBars(series.values, series.accent)}
-                  </div>
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    {series.caption}
-                  </p>
+            {trendLoading ? (
+              <div className="h-64 rounded-lg bg-muted animate-pulse" />
+            ) : chartData.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">
+                No data available for the last 7 days.
+              </p>
+            ) : (
+              <div className="space-y-6">
+                <div className="h-72">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={chartData} barCategoryGap="20%">
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                      <XAxis
+                        dataKey="day"
+                        tick={{ fontSize: 12 }}
+                        stroke="hsl(var(--muted-foreground))"
+                        tickLine={false}
+                      />
+                      <YAxis
+                        tick={{ fontSize: 12 }}
+                        stroke="hsl(var(--muted-foreground))"
+                        tickLine={false}
+                        axisLine={false}
+                        allowDecimals={false}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          background: "hsl(var(--popover))",
+                          border: "1px solid hsl(var(--border))",
+                          borderRadius: "8px",
+                          fontSize: "13px",
+                        }}
+                      />
+                      {trendSeries.map((s) => (
+                        <Bar
+                          key={s.label}
+                          dataKey={s.label}
+                          fill={s.accent}
+                          radius={[4, 4, 0, 0]}
+                          maxBarSize={24}
+                        />
+                      ))}
+                    </BarChart>
+                  </ResponsiveContainer>
                 </div>
-              ))}
-            </div>
+                <div className="grid grid-cols-3 gap-3">
+                  {trendSeries.map((s) => (
+                    <div key={s.label} className="rounded-lg border border-border/60 p-3 text-center">
+                      <div className="flex items-center justify-center gap-1.5 mb-1">
+                        <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: s.accent }} />
+                        <p className="text-xs font-medium">{s.label}</p>
+                      </div>
+                      <Badge variant="outline" className="text-[10px]">{s.change}</Badge>
+                      <p className="text-[10px] text-muted-foreground mt-1">{s.caption}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

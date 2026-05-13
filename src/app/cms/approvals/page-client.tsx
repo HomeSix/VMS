@@ -4,11 +4,13 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import {
-  fetchPendingBookings,
+  fetchApprovalBookings,
   updateBookingApproval,
+  updateBookingVisitStatus,
   type BookingApprovalRecord,
   type ApprovalStatus,
 } from "./actions";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -35,6 +37,7 @@ import {
 import { loadContext, type ContextData } from "../permissions/actions";
 
 const ADMIN_ROLE = "admin";
+const SECURITY_ROLE = "security";
 
 const DATE_FORMATTER = new Intl.DateTimeFormat("en-MY", {
   year: "numeric",
@@ -60,6 +63,27 @@ function formatPhone(dialCode?: string | null, phone?: string | null) {
   if (!dial && !number) return "-";
   if (dial && number) return `${dial} ${number}`;
   return dial || number;
+}
+
+function getApprovalStatus(status?: ApprovalStatus | null) {
+  if (status === "approved") {
+    return {
+      label: "Approved",
+      className: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    };
+  }
+
+  if (status === "rejected") {
+    return {
+      label: "Rejected",
+      className: "bg-rose-50 text-rose-700 border-rose-200",
+    };
+  }
+
+  return {
+    label: "Pending",
+    className: "bg-amber-50 text-amber-700 border-amber-200",
+  };
 }
 
 export default function BookingApprovalsPage() {
@@ -88,7 +112,7 @@ export default function BookingApprovalsPage() {
 
   useEffect(() => {
     if (contextLoading) return;
-    if (!context || context.role !== ADMIN_ROLE) {
+    if (!context || (context.role !== ADMIN_ROLE && context.role !== SECURITY_ROLE)) {
       router.replace("/cms/dashboard");
     }
   }, [contextLoading, context, router]);
@@ -97,7 +121,7 @@ export default function BookingApprovalsPage() {
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchPendingBookings();
+      const data = await fetchApprovalBookings();
       setBookings(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load bookings.");
@@ -107,7 +131,7 @@ export default function BookingApprovalsPage() {
   }, []);
 
   useEffect(() => {
-    if (!context || context.role !== ADMIN_ROLE) return;
+    if (!context || (context.role !== ADMIN_ROLE && context.role !== SECURITY_ROLE)) return;
     void loadBookings();
   }, [context, loadBookings]);
 
@@ -118,7 +142,39 @@ export default function BookingApprovalsPage() {
       setError(null);
       try {
         await updateBookingApproval(booking.id, status);
-        setBookings((prev) => prev.filter((item) => item.id !== booking.id));
+        setBookings((prev) => {
+          if (context?.role === ADMIN_ROLE) {
+            return prev.filter((item) => item.id !== booking.id);
+          }
+          return prev.map((item) =>
+            item.id === booking.id ? { ...item, book_status: status } : item
+          );
+        });
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to update booking.");
+      } finally {
+        setBusyId(null);
+      }
+    },
+    [context?.role]
+  );
+
+  const handleCheckOut = useCallback(
+    async (booking: BookingApprovalRecord) => {
+      if (booking.id == null) return;
+      if (booking.book_status !== "approved") {
+        setError("Booking must be approved before check-out.");
+        return;
+      }
+      setBusyId(booking.id);
+      setError(null);
+      try {
+        await updateBookingVisitStatus(booking.id, true);
+        setBookings((prev) =>
+          prev.map((item) =>
+            item.id === booking.id ? { ...item, status: true } : item
+          )
+        );
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to update booking.");
       } finally {
@@ -149,9 +205,15 @@ export default function BookingApprovalsPage() {
     );
   }
 
-  if (!context || context.role !== ADMIN_ROLE) {
+  if (!context || (context.role !== ADMIN_ROLE && context.role !== SECURITY_ROLE)) {
     return null;
   }
+
+  const isSecurity = context.role === SECURITY_ROLE;
+  const headerDescription = isSecurity
+    ? "Review bookings assigned to your security account."
+    : "Review pending bookings and decide whether to approve or reject them.";
+  const tableTitle = isSecurity ? "Assigned bookings" : "Pending bookings";
 
   return (
     <div className="space-y-6">
@@ -159,7 +221,7 @@ export default function BookingApprovalsPage() {
         <div>
           <h1 className="text-2xl font-semibold">Booking approvals</h1>
           <p className="text-sm text-muted-foreground">
-            Review pending bookings and decide whether to approve or reject them.
+            {headerDescription}
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={loadBookings} disabled={loading}>
@@ -171,7 +233,7 @@ export default function BookingApprovalsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Pending bookings</CardTitle>
+          <CardTitle>{tableTitle}</CardTitle>
           <CardDescription>
             {loading ? "Loading data..." : `Total ${summary.total} request(s)`}
           </CardDescription>
@@ -185,6 +247,7 @@ export default function BookingApprovalsPage() {
                   <TableHead>Visit date</TableHead>
                   <TableHead>Time</TableHead>
                   <TableHead>Purpose</TableHead>
+                  <TableHead>Status</TableHead>
                   <TableHead className="text-right">Action</TableHead>
                 </TableRow>
               </TableHeader>
@@ -192,7 +255,7 @@ export default function BookingApprovalsPage() {
                 {loading ? (
                   <TableRow>
                     <TableCell
-                      colSpan={5}
+                      colSpan={6}
                       className="py-8 text-center text-sm text-muted-foreground"
                     >
                       Loading bookings...
@@ -201,14 +264,21 @@ export default function BookingApprovalsPage() {
                 ) : bookings.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={5}
+                      colSpan={6}
                       className="py-8 text-center text-sm text-muted-foreground"
                     >
-                      No pending bookings.
+                      No bookings found.
                     </TableCell>
                   </TableRow>
                 ) : (
                   bookings.map((booking) => {
+                    const approvalStatus = getApprovalStatus(booking.book_status);
+                    const isPending =
+                      booking.book_status == null || booking.book_status === "pending";
+                    const canApprove = isPending;
+                    const canReject = isPending;
+                    const canCheckOut =
+                      booking.book_status === "approved" && booking.status !== true;
                     return (
                       <TableRow key={booking.id ?? booking.created_at ?? booking.full_name}>
                         <TableCell className="font-medium">
@@ -219,23 +289,45 @@ export default function BookingApprovalsPage() {
                           {formatTime(booking.start_time)} - {formatTime(booking.end_time)}
                         </TableCell>
                         <TableCell>{booking.visit_reason ?? "-"}</TableCell>
+                        <TableCell>
+                          <Badge
+                            variant="outline"
+                            className={`border ${approvalStatus.className}`}
+                          >
+                            {approvalStatus.label}
+                          </Badge>
+                        </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-2">
-                            <Button
-                              size="sm"
-                              onClick={() => handleDecision(booking, "approved")}
-                              disabled={booking.id == null || busyId === booking.id}
-                            >
-                              Approve
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              onClick={() => handleDecision(booking, "rejected")}
-                              disabled={booking.id == null || busyId === booking.id}
-                            >
-                              Reject
-                            </Button>
+                            {canApprove ? (
+                              <Button
+                                size="sm"
+                                onClick={() => handleDecision(booking, "approved")}
+                                disabled={booking.id == null || busyId === booking.id}
+                              >
+                                Approve
+                              </Button>
+                            ) : null}
+                            {canReject ? (
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => handleDecision(booking, "rejected")}
+                                disabled={booking.id == null || busyId === booking.id}
+                              >
+                                Reject
+                              </Button>
+                            ) : null}
+                            {canCheckOut ? (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleCheckOut(booking)}
+                                disabled={booking.id == null || busyId === booking.id}
+                              >
+                                Check out
+                              </Button>
+                            ) : null}
                             <Dialog>
                               <DialogTrigger
                                 render={
@@ -274,6 +366,12 @@ export default function BookingApprovalsPage() {
                                     </p>
                                   </div>
                                   <div className="rounded-lg border bg-muted/30 p-3">
+                                    <p className="text-xs text-muted-foreground">Approval status</p>
+                                    <p className="text-sm font-semibold">
+                                      {getApprovalStatus(booking.book_status).label}
+                                    </p>
+                                  </div>
+                                  <div className="rounded-lg border bg-muted/30 p-3">
                                     <p className="text-xs text-muted-foreground">Visit date</p>
                                     <p className="text-sm font-semibold">
                                       {formatDate(booking.visit_date)}
@@ -286,7 +384,7 @@ export default function BookingApprovalsPage() {
                                     </p>
                                   </div>
                                   <div className="rounded-lg border bg-muted/30 p-3">
-                                    <p className="text-xs text-muted-foreground">Teacher</p>
+                                    <p className="text-xs text-muted-foreground">Booked teacher</p>
                                     <p className="text-sm font-semibold">
                                       {booking.book_teacher ?? "-"}
                                     </p>

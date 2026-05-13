@@ -8,6 +8,7 @@ type SupabaseClient = Awaited<ReturnType<typeof getSupabaseClient>>;
 export type HistoryFilters = {
   fromDate?: string;
   toDate?: string;
+  walkInOnly?: boolean;
 };
 
 export type HistoryContext = {
@@ -18,6 +19,8 @@ export type HistoryContext = {
 };
 
 export type BookingApprovalStatus = "pending" | "approved" | "rejected";
+
+const WALK_IN_EMAIL = "security@example.com";
 
 export type BookingRecord = {
   id: number | null;
@@ -140,6 +143,10 @@ export async function fetchHistoryBookings(
 
   if (filters.toDate) {
     query = query.lte("visit_date", filters.toDate);
+  }
+
+  if (filters.walkInOnly) {
+    query = query.eq("email", WALK_IN_EMAIL);
   }
 
   query = query.in("book_status", ["approved", "rejected"]);

@@ -35,6 +35,7 @@ export const translations: Record<
 		bookingPickScheduleFirst: string;
 		carPlateCheckBoxLabel: string;
 		plateNumber: string;
+		walkInCheckboxLabel: string;
 
 		// Starter basic page
 		title: string;
@@ -112,6 +113,7 @@ export const translations: Record<
 		bookingPickScheduleFirst: "Please pick date and time first.",
 		carPlateCheckBoxLabel: "I have a vehicle to park",
 		plateNumber: "Plate Number",
+		walkInCheckboxLabel: "Walk-in visitor (use security guard email)",
 
 		// Starter basic page
 		title: "Welcome",
@@ -197,6 +199,7 @@ export const translations: Record<
 		bookingPickScheduleFirst: "Sila pilih tarikh dan masa dahulu.",
 		carPlateCheckBoxLabel: "Saya mempunyai kenderaan untuk diparkir",
 		plateNumber: "Nombor Plat",
+		walkInCheckboxLabel: "Pelawat walk-in (guna emel pengawal keselamatan)",
 
 		// Starter basic page
 		title: "Selamat Datang",

@@ -88,6 +88,9 @@ const iconMap: { [key: string]: any } = {
   Plus,
 };
 
+const SECURITY_ROLE = "security";
+const SECURITY_ALLOWED_PATHS = ["/cms/dashboard", "/cms/approvals"];
+
 const menuItemsData = menuItems.map((item: any) => ({
   ...item,
   icon: iconMap[item.icon] || HelpCircle,
@@ -171,6 +174,12 @@ export function AppSidebar({ userRole }: { userRole?: string }) {
 
   const renderMenuItem = (item: any, index: number) => {
     const isActive = item.href ? pathname === item.href : false;
+
+    if (userRole === SECURITY_ROLE) {
+      if (!item.href || !SECURITY_ALLOWED_PATHS.includes(item.href)) {
+        return null;
+      }
+    }
     
     // Hide permissions link if user doesn't have access
     if (item.href === "/cms/permissions" && !canAccessPermissions) {
@@ -181,7 +190,7 @@ export function AppSidebar({ userRole }: { userRole?: string }) {
       return null;
     }
 
-    if (item.href === "/cms/approvals" && userRole !== "admin") {
+    if (item.href === "/cms/approvals" && userRole !== "admin" && userRole !== SECURITY_ROLE) {
       return null;
     }
 
