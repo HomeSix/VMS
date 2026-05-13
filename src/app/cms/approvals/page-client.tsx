@@ -65,6 +65,14 @@ function formatPhone(dialCode?: string | null, phone?: string | null) {
   return dial || number;
 }
 
+function getVisitTimestamp(booking: BookingApprovalRecord) {
+  if (!booking.visit_date) return Number.POSITIVE_INFINITY;
+  const timePart = booking.start_time?.slice(0, 8) ?? "00:00:00";
+  const stamp = Date.parse(`${booking.visit_date}T${timePart}`);
+  if (Number.isNaN(stamp)) return Number.POSITIVE_INFINITY;
+  return stamp;
+}
+
 function getApprovalStatus(status?: ApprovalStatus | null) {
   if (status === "approved") {
     return {
@@ -189,6 +197,16 @@ export default function BookingApprovalsPage() {
     return { total };
   }, [bookings.length]);
 
+  const sortedBookings = useMemo(() => {
+    const items = [...bookings];
+    items.sort((a, b) => {
+      const timeDiff = getVisitTimestamp(b) - getVisitTimestamp(a);
+      if (timeDiff !== 0) return timeDiff;
+      return String(a.full_name ?? "").localeCompare(String(b.full_name ?? ""));
+    });
+    return items;
+  }, [bookings]);
+
   if (contextLoading) {
     return (
       <div className="space-y-6">
@@ -261,7 +279,7 @@ export default function BookingApprovalsPage() {
                       Loading bookings...
                     </TableCell>
                   </TableRow>
-                ) : bookings.length === 0 ? (
+                ) : sortedBookings.length === 0 ? (
                   <TableRow>
                     <TableCell
                       colSpan={6}
@@ -271,7 +289,7 @@ export default function BookingApprovalsPage() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  bookings.map((booking) => {
+                  sortedBookings.map((booking) => {
                     const approvalStatus = getApprovalStatus(booking.book_status);
                     const isPending =
                       booking.book_status == null || booking.book_status === "pending";
