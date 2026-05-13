@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useState } from "react"
-import { useParams, useSearchParams } from "next/navigation"
+import { useParams, useRouter, useSearchParams } from "next/navigation"
 
 import { translations, type Locale } from "@/lib/translations"
 import { createClient } from "@/lib/client"
@@ -60,6 +60,8 @@ const items = ["Apple", "Banana", "Orange", "Grapes"]
 
 export default function BookingPage() {
 
+  const router = useRouter()
+
   const [query, setQuery] = useState("")
 
   const filtered = items.filter(item =>
@@ -92,6 +94,15 @@ export default function BookingPage() {
       ? `?date=${selectedDate}&start=${selectedStartTime}&end=${selectedEndTime}`
       : ""
   }`
+
+  const handleChangeSchedule = () => {
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      router.back()
+      return
+    }
+
+    router.push(scheduleHref)
+  }
 
   const [hasCar, setHasCar] = useState(false)
   const [fullNameValue, setFullNameValue] = useState("")
@@ -213,14 +224,14 @@ export default function BookingPage() {
                 <p className="text-destructive">{t.bookingPickScheduleFirst}</p>
               )}
 
-              <Link
-                href={`/${locale}`}
+              <Button
+                type="button"
+                variant="secondary"
                 className="mt-3 inline-block"
+                onClick={handleChangeSchedule}
               >
-                <Button type="button" variant="secondary">
-                  {t.bookingChangeScheduleButton}
-                </Button>
-              </Link>
+                {t.bookingChangeScheduleButton}
+              </Button>
             </div>
 
             <FieldLabel htmlFor="fullname">{t.fName}</FieldLabel>
