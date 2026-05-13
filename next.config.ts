@@ -2,6 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
 	allowedDevOrigins: ["192.168.100.123"],
+	images: { unoptimized: true },
 };
 
 export default nextConfig;

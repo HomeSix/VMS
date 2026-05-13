@@ -1,6 +1,7 @@
 console.log('Script started...');
-import { makeWASocket, useMultiFileAuthState } from 'baileys';
-import QRCode from 'qrcode';
+
+const { makeWASocket, useMultiFileAuthState } = require('baileys');
+const QRCode = require('qrcode');
 
 // Make sure to have Node.js >= 17
 async function main() {
