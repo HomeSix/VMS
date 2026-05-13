@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
+  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
@@ -35,6 +36,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { loadContext, type ContextData } from "../permissions/actions";
+import { ChevronDownIcon, ChevronUpIcon } from "lucide-react";
 
 const ADMIN_ROLE = "admin";
 const SECURITY_ROLE = "security";
@@ -66,10 +68,10 @@ function formatPhone(dialCode?: string | null, phone?: string | null) {
 }
 
 function getVisitTimestamp(booking: BookingApprovalRecord) {
-  if (!booking.visit_date) return Number.POSITIVE_INFINITY;
+  if (!booking.visit_date) return null;
   const timePart = booking.start_time?.slice(0, 8) ?? "00:00:00";
   const stamp = Date.parse(`${booking.visit_date}T${timePart}`);
-  if (Number.isNaN(stamp)) return Number.POSITIVE_INFINITY;
+  if (Number.isNaN(stamp)) return null;
   return stamp;
 }
 
@@ -101,6 +103,7 @@ export default function BookingApprovalsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
+  const [sortDirection, setSortDirection] = useState<"desc" | "asc">("desc");
   const router = useRouter();
 
   const loadContextData = useCallback(async () => {
@@ -200,12 +203,25 @@ export default function BookingApprovalsPage() {
   const sortedBookings = useMemo(() => {
     const items = [...bookings];
     items.sort((a, b) => {
-      const timeDiff = getVisitTimestamp(b) - getVisitTimestamp(a);
-      if (timeDiff !== 0) return timeDiff;
-      return String(a.full_name ?? "").localeCompare(String(b.full_name ?? ""));
+      const aStamp = getVisitTimestamp(a);
+      const bStamp = getVisitTimestamp(b);
+      const nameDiff = String(a.full_name ?? "").localeCompare(
+        String(b.full_name ?? "")
+      );
+
+      if (aStamp == null && bStamp == null) return nameDiff;
+      if (aStamp == null) return 1;
+      if (bStamp == null) return -1;
+
+      const timeDiff = aStamp - bStamp;
+      if (timeDiff !== 0) {
+        return sortDirection === "asc" ? timeDiff : -timeDiff;
+      }
+      return nameDiff;
     });
     return items;
-  }, [bookings]);
+  }, [bookings, sortDirection]);
+  const isLatestFirst = sortDirection === "desc";
 
   if (contextLoading) {
     return (
@@ -255,6 +271,21 @@ export default function BookingApprovalsPage() {
           <CardDescription>
             {loading ? "Loading data..." : `Total ${summary.total} request(s)`}
           </CardDescription>
+          <CardAction>
+            <Button
+              variant="outline"
+              size="icon-sm"
+              onClick={() =>
+                setSortDirection((current) =>
+                  current === "desc" ? "asc" : "desc"
+                )
+              }
+              aria-label="Sort by visit date"
+              title={isLatestFirst ? "Latest first" : "Earliest first"}
+            >
+              {isLatestFirst ? <ChevronDownIcon /> : <ChevronUpIcon />}
+            </Button>
+          </CardAction>
         </CardHeader>
         <CardContent>
           <div className="w-full overflow-x-auto">

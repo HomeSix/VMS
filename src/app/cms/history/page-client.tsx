@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
+  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
@@ -45,7 +46,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
-import { ChevronDownIcon } from "lucide-react";
+import { ChevronDownIcon, ChevronUpIcon } from "lucide-react";
 
 const DATE_FORMATTER = new Intl.DateTimeFormat("en-MY", {
   year: "numeric",
@@ -76,6 +77,14 @@ function formatPhone(dialCode?: string | null, phone?: string | null) {
   if (!dial && !number) return "-";
   if (dial && number) return `${dial} ${number}`;
   return dial || number;
+}
+
+function getVisitTimestamp(booking: BookingRecord) {
+  if (!booking.visit_date) return null;
+  const timePart = booking.start_time?.slice(0, 8) ?? "00:00:00";
+  const stamp = Date.parse(`${booking.visit_date}T${timePart}`);
+  if (Number.isNaN(stamp)) return null;
+  return stamp;
 }
 
 function toDateKey(date: Date) {
@@ -214,6 +223,7 @@ export default function HistoryPage() {
   const [busyId, setBusyId] = useState<number | null>(null);
   const [fromOpen, setFromOpen] = useState(false);
   const [toOpen, setToOpen] = useState(false);
+  const [sortDirection, setSortDirection] = useState<"desc" | "asc">("desc");
 
   const fromDateValue = filters.fromDate
     ? new Date(`${filters.fromDate}T00:00:00`)
@@ -248,14 +258,6 @@ export default function HistoryPage() {
     void loadBookings(filters);
   };
 
-  const handlePrint = () => {
-    if (exportFormat === "excel") {
-      downloadCsv(buildCsvRows(bookings));
-      return;
-    }
-    window.print();
-  };
-
   const handleCheckOut = useCallback(async (booking: BookingRecord) => {
     if (booking.id == null || booking.status == null) return;
     if (booking.book_status !== "approved") {
@@ -277,6 +279,37 @@ export default function HistoryPage() {
       setBusyId(null);
     }
   }, []);
+
+  const sortedBookings = useMemo(() => {
+    const items = [...bookings];
+    items.sort((a, b) => {
+      const aStamp = getVisitTimestamp(a);
+      const bStamp = getVisitTimestamp(b);
+      const nameDiff = String(a.full_name ?? "").localeCompare(
+        String(b.full_name ?? "")
+      );
+
+      if (aStamp == null && bStamp == null) return nameDiff;
+      if (aStamp == null) return 1;
+      if (bStamp == null) return -1;
+
+      const timeDiff = aStamp - bStamp;
+      if (timeDiff !== 0) {
+        return sortDirection === "asc" ? timeDiff : -timeDiff;
+      }
+      return nameDiff;
+    });
+    return items;
+  }, [bookings, sortDirection]);
+  const isLatestFirst = sortDirection === "desc";
+
+  const handlePrint = () => {
+    if (exportFormat === "excel") {
+      downloadCsv(buildCsvRows(sortedBookings));
+      return;
+    }
+    window.print();
+  };
 
   const showingHint = useMemo(() => {
     if (!context?.role) return "";
@@ -438,6 +471,21 @@ export default function HistoryPage() {
           <CardDescription>
             {loading ? "Loading data..." : `Total ${bookings.length} record(s)`}
           </CardDescription>
+          <CardAction>
+            <Button
+              variant="outline"
+              size="icon-sm"
+              onClick={() =>
+                setSortDirection((current) =>
+                  current === "desc" ? "asc" : "desc"
+                )
+              }
+              aria-label="Sort by visit date"
+              title={isLatestFirst ? "Latest first" : "Earliest first"}
+            >
+              {isLatestFirst ? <ChevronDownIcon /> : <ChevronUpIcon />}
+            </Button>
+          </CardAction>
         </CardHeader>
         <CardContent>
           <div className="w-full overflow-x-auto">
@@ -461,7 +509,7 @@ export default function HistoryPage() {
                       Loading bookings...
                     </TableCell>
                   </TableRow>
-                ) : bookings.length === 0 ? (
+                ) : sortedBookings.length === 0 ? (
                   <TableRow>
                     <TableCell
                       colSpan={5}
@@ -471,7 +519,7 @@ export default function HistoryPage() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  bookings.map((booking) => {
+                  sortedBookings.map((booking) => {
                     const status = getBookingStatus(
                       booking.book_status,
                       booking.status
