@@ -355,7 +355,14 @@ export default function TimeTablePage() {
 					</div>
 					<div className="flex items-center gap-2">
 						<FieldLabel className="text-xs whitespace-nowrap">From:</FieldLabel>
-						<Select value={timeStart} onValueChange={(v) => { setTimeStart(v); setPage(1); }}>
+							<Select
+								value={timeStart}
+								onValueChange={(v) => {
+									if (v == null) return;       // guard null
+									setTimeStart(v);
+									setPage(1);
+								}}
+								>
 							<SelectTrigger className="w-20">
 								<SelectValue />
 							</SelectTrigger>
@@ -368,7 +375,14 @@ export default function TimeTablePage() {
 					</div>
 					<div className="flex items-center gap-2">
 						<FieldLabel className="text-xs whitespace-nowrap">To:</FieldLabel>
-						<Select value={timeEnd} onValueChange={(v) => { setTimeEnd(v); setPage(1); }}>
+						<Select
+							value={timeEnd}
+							onValueChange={(v) => {
+								if (v == null) return;
+								setTimeEnd(v);
+								setPage(1);
+							}}
+							>
 							<SelectTrigger className="w-20">
 								<SelectValue />
 							</SelectTrigger>
