@@ -713,7 +713,7 @@ function PagePermissionsTab({ onError }: { onError: (msg: string | null) => void
                       <Switch
                         checked={allowed}
                         onCheckedChange={() => togglePage(page.page_path)}
-                        disabled={saving || page.page_path === "/cms/dashboard"}
+                        disabled={saving}
                       />
                     </div>
                   </div>
