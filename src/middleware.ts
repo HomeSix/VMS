@@ -104,38 +104,18 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Security role: only dashboard + approvals
-  if (isSecurity) {
-    if (isDashboard || isApprovals) {
-      return NextResponse.next();
-    }
+  // Unapproved users — only dashboard
+  if (!isApproved) {
+    if (isDashboard) return NextResponse.next();
     const url = request.nextUrl.clone();
-    url.pathname = "/cms/denied";
+    url.pathname = "/cms/dashboard";
     return NextResponse.redirect(url);
   }
 
-  // Staff role: allow dashboard + approvals
-  if (isStaff) {
-    if (isDashboard || isApprovals) {
-      return NextResponse.next();
-    }
-    const url = request.nextUrl.clone();
-    url.pathname = "/cms/denied";
-    return NextResponse.redirect(url);
-  }
+  const roleId = userRoleData?.role_id;
 
-  // Role-based page permission check for non-admin approved users
-  if (isApproved && !isDashboard) {
-    const roleId = userRoleData?.role_id;
-    
-    if (!roleId) {
-      // No role assigned — deny everything except dashboard
-      const url = request.nextUrl.clone();
-      url.pathname = "/cms/denied";
-      return NextResponse.redirect(url);
-    }
-
-    // Try matching with full path first (e.g., "/cms/permissions")
+  // Check role_permissions for all approved non-admin users
+  if (roleId) {
     let { data: perm, error: permError } = await supabase
       .from("role_permissions")
       .select("can_access")
@@ -143,7 +123,6 @@ export async function middleware(request: NextRequest) {
       .eq("page_path", pathname)
       .maybeSingle();
 
-    // If no match, try with normalized path (e.g., "permissions")
     if (!perm && !permError) {
       const normalized = normalizePath(pathname);
       const result = await supabase
@@ -156,17 +135,6 @@ export async function middleware(request: NextRequest) {
       permError = result.error;
     }
 
-    // Debug logging (uncomment to troubleshoot)
-    // console.log({
-    //   pathname,
-    //   normalizedPath: normalizePath(pathname),
-    //   roleId,
-    //   roleName,
-    //   perm,
-    //   permError,
-    //   userRoleData,
-    // });
-
     if (permError) {
       console.error("Permission fetch error:", permError);
       const url = request.nextUrl.clone();
@@ -174,24 +142,28 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(url);
     }
 
-    // Explicit deny
-    if (perm && perm.can_access === false) {
+    // Explicit permission record found — respect it
+    if (perm !== null && perm !== undefined) {
+      if (perm.can_access) return NextResponse.next();
       const url = request.nextUrl.clone();
       url.pathname = "/cms/denied";
       return NextResponse.redirect(url);
-    }
-
-    // No permission record found — configurable behavior
-    if (!perm) {
-      // Option 1: Deny by default (strict)
-      const url = request.nextUrl.clone();
-      url.pathname = "/cms/denied";
-      return NextResponse.redirect(url);
-      
-      // Option 2: Allow by default (permissive) — uncomment below, comment out above
-      // return NextResponse.next();
     }
   }
 
-  return NextResponse.next();
+  // No explicit permission — fall back to role-based defaults
+  if (isStaff || isSecurity) {
+    if (isDashboard || isApprovals) return NextResponse.next();
+    const url = request.nextUrl.clone();
+    url.pathname = "/cms/denied";
+    return NextResponse.redirect(url);
+  }
+
+  // Other approved roles — dashboard allowed by default
+  if (isDashboard) return NextResponse.next();
+
+  // Everything else denied
+  const url = request.nextUrl.clone();
+  url.pathname = "/cms/denied";
+  return NextResponse.redirect(url);
 }
