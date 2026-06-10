@@ -18,15 +18,19 @@ import { createClient } from "@/lib/client";
 import {
   fetchAdminSnapshot,
   fetchStaffSnapshot,
+  fetchSecuritySnapshot,
   fetchAdminScheduleHealth,
   fetchStaffScheduleHealth,
+  fetchSecurityScheduleHealth,
   fetchAdminTrends,
   fetchStaffTrends,
   saveAvailability,
   type AdminSnapshot,
   type StaffSnapshot,
+  type SecuritySnapshot,
   type AdminScheduleHealth,
   type StaffScheduleHealth,
+  type SecurityScheduleHealth,
   type TrendSeries,
 } from "./actions";
 import {
@@ -41,6 +45,7 @@ import {
 
 const ADMIN_ROLE = "admin";
 const STAFF_ROLE = "staff";
+const SECURITY_ROLE = "security";
 const APPROVED_STATUS = true;
 
 const OPEN_START = 8 * 60;
@@ -104,9 +109,11 @@ export default function DashboardPage() {
   const [recentLoading, setRecentLoading] = useState(false);
   const [adminSnapshot, setAdminSnapshot] = useState<AdminSnapshot | null>(null);
   const [staffSnapshot, setStaffSnapshot] = useState<StaffSnapshot | null>(null);
+  const [securitySnapshot, setSecuritySnapshot] = useState<SecuritySnapshot | null>(null);
   const [snapshotLoading, setSnapshotLoading] = useState(false);
   const [adminHealth, setAdminHealth] = useState<AdminScheduleHealth | null>(null);
   const [staffHealth, setStaffHealth] = useState<StaffScheduleHealth | null>(null);
+  const [securityHealth, setSecurityHealth] = useState<SecurityScheduleHealth | null>(null);
   const [healthLoading, setHealthLoading] = useState(false);
   const [trendSeries, setTrendSeries] = useState<TrendSeries[]>([]);
   const [trendLoading, setTrendLoading] = useState(false);
@@ -249,6 +256,9 @@ export default function DashboardPage() {
         if (isAdminRole) {
           const data = await fetchAdminSnapshot();
           setAdminSnapshot(data);
+        } else if (context.role === SECURITY_ROLE) {
+          const data = await fetchSecuritySnapshot();
+          setSecuritySnapshot(data);
         } else {
           const data = await fetchStaffSnapshot();
           setStaffSnapshot(data);
@@ -274,6 +284,9 @@ export default function DashboardPage() {
         if (isAdminRole) {
           const data = await fetchAdminScheduleHealth();
           setAdminHealth(data);
+        } else if (context.role === SECURITY_ROLE) {
+          const data = await fetchSecurityScheduleHealth();
+          setSecurityHealth(data);
         } else {
           const data = await fetchStaffScheduleHealth();
           setStaffHealth(data);
@@ -347,6 +360,8 @@ export default function DashboardPage() {
   }, [allDayAvailable, availabilityDate, availabilitySlots]);
 
   const isAdmin = context?.role === ADMIN_ROLE;
+  const isStaff = context?.role === STAFF_ROLE;
+  const isSecurity = context?.role === SECURITY_ROLE;
 
   const snapshotItems = useMemo(() => {
     if (isAdmin && adminSnapshot) {
@@ -389,7 +404,35 @@ export default function DashboardPage() {
         },
       ];
     }
-    if (!isAdmin && staffSnapshot) {
+    if (isSecurity && securitySnapshot) {
+      return [
+        {
+          title: "Total today",
+          value: String(securitySnapshot.totalToday),
+          desc: "All appointments",
+          accent: "emerald" as const,
+        },
+        {
+          title: "Checked in",
+          value: String(securitySnapshot.checkedIn),
+          desc: "Visitors arrived",
+          accent: "sky" as const,
+        },
+        {
+          title: "Pending check-ins",
+          value: String(securitySnapshot.pendingCheckIns),
+          desc: "Approved, not arrived",
+          accent: "amber" as const,
+        },
+        {
+          title: "Walk-ins",
+          value: String(securitySnapshot.walkIns),
+          desc: "Today's walk-ins",
+          accent: "violet" as const,
+        },
+      ];
+    }
+    if (!isAdmin && !isSecurity && staffSnapshot) {
       return [
         {
           title: "My appointments",
@@ -418,7 +461,7 @@ export default function DashboardPage() {
       ];
     }
     return [];
-  }, [isAdmin, adminSnapshot, staffSnapshot]);
+  }, [isAdmin, isSecurity, adminSnapshot, staffSnapshot, securitySnapshot]);
 
   const chartData = useMemo(() => {
     if (trendSeries.length === 0) return [];
@@ -458,8 +501,7 @@ export default function DashboardPage() {
   }
 
   const isApproved = isAdmin || context?.is_active === APPROVED_STATUS;
-  const isStaff = context?.role === STAFF_ROLE;
-  const isEditorial = !isAdmin && !isStaff && isApproved;
+  const isEditorial = !isAdmin && !isStaff && !isSecurity && isApproved;
 
   if (!isApproved) {
     return (
@@ -494,12 +536,14 @@ export default function DashboardPage() {
     );
   }
 
-  const viewLabel = isAdmin ? "Admin view" : isStaff ? "Staff view" : "Viewer";
+  const viewLabel = isAdmin ? "Admin view" : isStaff ? "Staff view" : isSecurity ? "Security" : "Viewer";
   const viewDescription = isAdmin
     ? "Operations overview for today."
     : isStaff
       ? "Your shift overview and live queue flow."
-      : "Welcome to the dashboard.";
+      : isSecurity
+        ? "Monitor visitor traffic and manage check-ins."
+        : "Welcome to the dashboard.";
 
   const scheduleHealth = (() => {
     if (isAdmin && adminHealth) {
@@ -536,7 +580,29 @@ export default function DashboardPage() {
         },
       ];
     }
-    if (!isAdmin && staffHealth) {
+    if (isSecurity && securityHealth) {
+      return [
+        {
+          title: "Approved today",
+          value: String(securityHealth.approvedToday),
+          desc: "Confirmed bookings",
+          accent: "emerald" as const,
+        },
+        {
+          title: "Rejected today",
+          value: String(securityHealth.rejectedToday),
+          desc: "Declined bookings",
+          accent: "rose" as const,
+        },
+        {
+          title: "Checked out",
+          value: String(securityHealth.checkedOut),
+          desc: "Visitors who left",
+          accent: "sky" as const,
+        },
+      ];
+    }
+    if (!isAdmin && !isSecurity && staffHealth) {
       return [
         {
           title: "My approved",
@@ -665,7 +731,7 @@ export default function DashboardPage() {
         </CardContent>
       </Card>
 
-      {!isAdmin && (
+      {!isAdmin && !isSecurity && (
         <Card>
           <CardHeader>
             <div className="h-1 w-10 rounded-full bg-amber-500/40 mb-1" />

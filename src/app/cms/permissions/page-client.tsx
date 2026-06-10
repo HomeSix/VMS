@@ -7,6 +7,7 @@ import {
   fetchStaffList,
   updateStaffStatus,
   rejectStaff,
+  restoreStaff,
   assignUserRole,
   fetchRoles,
   createRole,
@@ -168,6 +169,7 @@ function StaffAccessTab({ onError }: { onError: (msg: string | null) => void }) 
   const [roles, setRoles] = useState<RoleRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [rejectTarget, setRejectTarget] = useState<string | null>(null);
+  const [showRejected, setShowRejected] = useState(false);
 
   const filteredRows = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -191,7 +193,7 @@ function StaffAccessTab({ onError }: { onError: (msg: string | null) => void }) 
     onError(null);
     try {
       const [staffData, rolesData] = await Promise.all([
-        fetchStaffList(),
+        fetchStaffList(showRejected),
         fetchRoles(),
       ]);
       setRows(staffData);
@@ -201,7 +203,7 @@ function StaffAccessTab({ onError }: { onError: (msg: string | null) => void }) 
     } finally {
       setLoading(false);
     }
-  }, [onError]);
+  }, [onError, showRejected]);
 
   useEffect(() => {
     void refresh();
@@ -236,6 +238,18 @@ function StaffAccessTab({ onError }: { onError: (msg: string | null) => void }) 
     setRejectTarget(null);
   }, [rejectTarget, refresh, onError]);
 
+  const handleRestore = useCallback(async (id: string) => {
+    setBusyId(id);
+    onError(null);
+    try {
+      await restoreStaff(id);
+      await refresh();
+    } catch (err) {
+      onError(err instanceof Error ? err.message : "Failed to restore staff");
+    }
+    setBusyId(null);
+  }, [refresh, onError]);
+
   const changeRole = useCallback(
     async (userId: string, roleId: string) => {
       onError(null);
@@ -262,12 +276,23 @@ function StaffAccessTab({ onError }: { onError: (msg: string | null) => void }) 
           <CardTitle>Staff requests</CardTitle>
           <CardDescription>Approve or revoke access and assign roles.</CardDescription>
           <CardAction>
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search name or email"
-              className="w-full sm:w-[220px]"
-            />
+            <div className="flex items-center gap-3">
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={showRejected}
+                  onChange={(e) => setShowRejected(e.target.checked)}
+                  className="h-4 w-4 rounded border-muted-foreground"
+                />
+                Show rejected
+              </label>
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search name or email"
+                className="w-full sm:w-[220px]"
+              />
+            </div>
           </CardAction>
         </CardHeader>
         <CardContent>
@@ -297,6 +322,7 @@ function StaffAccessTab({ onError }: { onError: (msg: string | null) => void }) 
                 {filteredRows.map((row) => {
                   const displayName = row.full_name || row.email?.split("@")[0] || "Staff";
                   const isPending = row.is_active === PENDING_STATUS;
+                  const isRejected = row.role_name === "rejected";
 
                   return (
                     <TableRow key={row.id}>
@@ -305,13 +331,13 @@ function StaffAccessTab({ onError }: { onError: (msg: string | null) => void }) 
                           <img
                             src={row.avatar_url || "/profile_default.png"}
                             alt={displayName}
-                            className="h-9 w-9 rounded-full border object-cover"
+                            className={`h-9 w-9 rounded-full border object-cover ${isRejected ? "opacity-50" : ""}`}
                             onError={(e) => {
                               (e.target as HTMLImageElement).src = "/profile_default.png";
                             }}
                           />
                           <div>
-                            <p className="text-sm font-medium">{displayName}</p>
+                            <p className={`text-sm font-medium ${isRejected ? "text-muted-foreground line-through" : ""}`}>{displayName}</p>
                             <p className="text-xs text-muted-foreground">{row.email || "No email"}</p>
                           </div>
                         </div>
@@ -320,6 +346,7 @@ function StaffAccessTab({ onError }: { onError: (msg: string | null) => void }) 
                         <Select
                           value={row.role_id ?? "none"}
                           onValueChange={(val) => changeRole(row.id, val && val !== "none" ? val : "")}
+                          disabled={isRejected}
                         >
                           <SelectTrigger className="w-[140px]" size="sm">
                             <SelectValue placeholder="No role">
@@ -337,7 +364,16 @@ function StaffAccessTab({ onError }: { onError: (msg: string | null) => void }) 
                         </Select>
                       </TableCell>
                       <TableCell className="text-right">
-                        {isPending ? (
+                        {isRejected ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleRestore(row.id)}
+                            disabled={busyId === row.id}
+                          >
+                            {busyId === row.id ? "Restoring..." : "Restore"}
+                          </Button>
+                        ) : isPending ? (
                           <div className="flex items-center justify-end gap-2">
                             <Button
                               size="sm"

@@ -407,6 +407,16 @@ export default function HistoryPage() {
             <Button onClick={handleSearch} disabled={loading}>
               Search
             </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setFilters({});
+                void loadBookings({});
+              }}
+              disabled={loading}
+            >
+              Clear
+            </Button>
 
             <div className="flex items-end gap-2">
               <div className="grid gap-1">

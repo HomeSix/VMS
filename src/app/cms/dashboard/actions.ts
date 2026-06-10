@@ -72,6 +72,92 @@ export type StaffScheduleHealth = {
   availableSlotsLeft: number;
 };
 
+export type SecuritySnapshot = {
+  totalToday: number;
+  checkedIn: number;
+  pendingCheckIns: number;
+  walkIns: number;
+};
+
+export type SecurityScheduleHealth = {
+  approvedToday: number;
+  rejectedToday: number;
+  checkedOut: number;
+};
+
+export async function fetchSecuritySnapshot(): Promise<SecuritySnapshot> {
+  const supabase = await getSupabaseClient();
+  const today = getTodayKey();
+
+  const [
+    { count: totalToday },
+    { count: checkedIn },
+    { count: pendingCheckIns },
+  ] = await Promise.all([
+    supabase
+      .from("bookings")
+      .select("*", { count: "exact", head: true })
+      .eq("visit_date", today),
+    supabase
+      .from("bookings")
+      .select("*", { count: "exact", head: true })
+      .eq("visit_date", today)
+      .eq("status", true),
+    supabase
+      .from("bookings")
+      .select("*", { count: "exact", head: true })
+      .eq("visit_date", today)
+      .eq("book_status", "approved")
+      .or("status.is.null,status.eq.false"),
+  ]);
+
+  const { count: walkIns } = await supabase
+    .from("bookings")
+    .select("*", { count: "exact", head: true })
+    .eq("visit_date", today)
+    .eq("email", "security@example.com");
+
+  return {
+    totalToday: totalToday ?? 0,
+    checkedIn: checkedIn ?? 0,
+    pendingCheckIns: pendingCheckIns ?? 0,
+    walkIns: walkIns ?? 0,
+  };
+}
+
+export async function fetchSecurityScheduleHealth(): Promise<SecurityScheduleHealth> {
+  const supabase = await getSupabaseClient();
+  const today = getTodayKey();
+
+  const [
+    { count: approvedToday },
+    { count: rejectedToday },
+    { count: checkedOut },
+  ] = await Promise.all([
+    supabase
+      .from("bookings")
+      .select("*", { count: "exact", head: true })
+      .eq("visit_date", today)
+      .eq("book_status", "approved"),
+    supabase
+      .from("bookings")
+      .select("*", { count: "exact", head: true })
+      .eq("visit_date", today)
+      .eq("book_status", "rejected"),
+    supabase
+      .from("bookings")
+      .select("*", { count: "exact", head: true })
+      .eq("visit_date", today)
+      .eq("status", true),
+  ]);
+
+  return {
+    approvedToday: approvedToday ?? 0,
+    rejectedToday: rejectedToday ?? 0,
+    checkedOut: checkedOut ?? 0,
+  };
+}
+
 export async function saveAvailability(formData: {
   allDayAvailable: boolean;
   availabilityDate: string;
