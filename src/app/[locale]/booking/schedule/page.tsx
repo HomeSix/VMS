@@ -60,6 +60,8 @@ const TIME_SLOTS = Array.from({ length: (END_MINUTE - START_MINUTE) / SLOT_STEP 
 
 type TimeRange = { start: string; end: string }
 
+type Teacher = { id: string; fullName: string; isAvailable: boolean }
+
 export default function BookingSchedulePage() {
   const params = useParams<{ locale?: string }>()
   const searchParams = useSearchParams()
@@ -79,8 +81,9 @@ export default function BookingSchedulePage() {
   const [selectedRange, setSelectedRange] = useState<TimeRange | null>(null)
   const [pendingStartTime, setPendingStartTime] = useState<string | null>(null)
   const [teacherName, setTeacherName] = useState(incomingTeacher ?? "")
-  const [teachers, setTeachers] = useState<Array<{ id: string; fullName: string }>>([])
+  const [teachers, setTeachers] = useState<Teacher[]>([])
   const [teachersLoading, setTeachersLoading] = useState(true)
+  const [teacherAllowedSlots, setTeacherAllowedSlots] = useState<Set<string> | null>(null)
 
   useEffect(() => {
     if (!incomingDate) return
@@ -106,7 +109,7 @@ export default function BookingSchedulePage() {
 
       const { data, error } = await supabase
         .from("system_user")
-        .select("id, full_name, roles(name)")
+        .select("id, full_name, isAvailable, roles(name)")
         .order("full_name", { ascending: true })
 
       if (error) {
@@ -117,10 +120,14 @@ export default function BookingSchedulePage() {
 
       const normalized = (data ?? [])
         .filter((row: any) => row.roles?.name !== "admin")
-        .map((row: any) => ({
-          id: String(row.id),
-          fullName: String(row.full_name ?? "").trim(),
-        }))
+        .map((row: any) => {
+          const raw = row.isAvailable;
+          return {
+            id: String(row.id),
+            fullName: String(row.full_name ?? "").trim(),
+            isAvailable: raw === null || raw === undefined || raw === true || raw === "true",
+          };
+        })
         .filter((row) => row.fullName.length > 0)
 
       setTeachers(normalized)
@@ -131,27 +138,39 @@ export default function BookingSchedulePage() {
   }, [])
 
   useEffect(() => {
-    // Only trigger when date or teacher changes
-    const loadBookedSlots = async () => {
+    const loadAvailability = async () => {
       if (!date || !teacherName) {
         setBookedRanges([]);
+        setTeacherAllowedSlots(null);
         return;
       }
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from("bookings")
-        .select("start_time, end_time, book_teacher")
-        .eq("visit_date", toDateKey(date))
-        .eq("book_teacher", teacherName)
-        .or("book_status.is.null,book_status.eq.pending,book_status.eq.approved")
-        .order("start_time", { ascending: true });
 
-      if (error) {
+      const teacher = teachers.find((t) => t.fullName === teacherName);
+      if (!teacher) {
         setBookedRanges([]);
+        setTeacherAllowedSlots(null);
         return;
       }
 
-      const normalized = (data ?? [])
+      const supabase = createClient();
+      const dateKey = toDateKey(date);
+
+      const [bookingResult, availabilityResult] = await Promise.all([
+        supabase
+          .from("bookings")
+          .select("start_time, end_time, book_teacher")
+          .eq("visit_date", dateKey)
+          .eq("book_teacher", teacherName)
+          .or("book_status.is.null,book_status.eq.pending,book_status.eq.approved")
+          .order("start_time", { ascending: true }),
+        supabase
+          .from("teacher_availability")
+          .select("slot_time")
+          .eq("user_id", teacher.id)
+          .eq("available_date", dateKey),
+      ]);
+
+      const normalized = (bookingResult.data ?? [])
         .map((item) => ({
           start: String(item.start_time).slice(0, 5),
           end: String(item.end_time).slice(0, 5),
@@ -159,10 +178,24 @@ export default function BookingSchedulePage() {
         .filter((item) => item.start.length === 5 && item.end.length === 5);
 
       setBookedRanges(normalized);
+
+      const customSlots = new Set(
+        (availabilityResult.data ?? [])
+          .map((row: any) => String(row.slot_time ?? "").slice(0, 5))
+          .filter((s) => s.length === 5)
+      );
+
+      if (customSlots.size > 0) {
+        setTeacherAllowedSlots(customSlots);
+      } else if (teacher.isAvailable) {
+        setTeacherAllowedSlots(null);
+      } else {
+        setTeacherAllowedSlots(new Set());
+      }
     };
 
-    void loadBookedSlots();
-  }, [date, teacherName]);
+    void loadAvailability();
+  }, [date, teacherName, teachers]);
 
   const dateKey = date ? toDateKey(date) : null
   const teacherParam = teacherName ? `&teacher=${encodeURIComponent(teacherName)}` : ""
@@ -176,10 +209,15 @@ export default function BookingSchedulePage() {
     )
   }
 
-  const availableSlots = TIME_SLOTS.filter((slot) => !isSlotBooked(slot))
+  const isSlotAllowed = (slotTime: string) => {
+    if (teacherAllowedSlots === null) return true;
+    return teacherAllowedSlots.has(slotTime);
+  }
+
+  const availableSlots = TIME_SLOTS.filter((slot) => !isSlotBooked(slot) && isSlotAllowed(slot))
 
   const handleTimeClick = (slotTime: string) => {
-    if (isSlotBooked(slotTime)) return
+    if (isSlotBooked(slotTime) || !isSlotAllowed(slotTime)) return
 
     if (!pendingStartTime) {
       setPendingStartTime(slotTime)
@@ -287,6 +325,8 @@ export default function BookingSchedulePage() {
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-6">
                 {TIME_SLOTS.map((slotTime) => {
                   const booked = isSlotBooked(slotTime)
+                  const notAllowed = !isSlotAllowed(slotTime)
+                  const unavailable = booked || notAllowed
                   const isPendingStart = pendingStartTime === slotTime
 
                   const inConfirmed =
@@ -298,12 +338,12 @@ export default function BookingSchedulePage() {
                     <button
                       key={slotTime}
                       type="button"
-                      disabled={booked}
+                      disabled={unavailable}
                       onClick={() => handleTimeClick(slotTime)}
                       className={[
                         "h-10 rounded-md border text-sm",
-                        booked && "cursor-not-allowed border-muted bg-muted text-muted-foreground",
-                        !booked && !isPendingStart && !inConfirmed && "border-input hover:bg-accent",
+                        unavailable && "cursor-not-allowed border-muted bg-muted text-muted-foreground",
+                        !unavailable && !isPendingStart && !inConfirmed && "border-input hover:bg-accent",
                         isPendingStart && "border-foreground bg-accent",
                         inConfirmed && !isPendingStart && "border-foreground bg-foreground text-background",
                       ]
@@ -318,6 +358,10 @@ export default function BookingSchedulePage() {
 
               {availableSlots.length === 0 && (
                 <p className="text-sm text-destructive">{t.scheduleNoSlots}</p>
+              )}
+
+              {teacherName && teacherAllowedSlots !== null && teacherAllowedSlots.size === 0 && (
+                <p className="text-sm text-destructive">This staff has no available slots on this date.</p>
               )}
 
               {bookedRanges.length > 0 && (

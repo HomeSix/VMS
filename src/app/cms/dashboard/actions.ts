@@ -97,13 +97,7 @@ export async function saveAvailability(formData: {
     return { error: updateError.message };
   }
 
-  const adminSupabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SECRET_KEY!,
-    { cookies: { getAll: () => [], setAll: () => {} } }
-  );
-
-  const { error: deleteError } = await adminSupabase
+  const { error: deleteError } = await supabase
     .from("teacher_availability")
     .delete()
     .eq("user_id", user.id)
@@ -120,7 +114,7 @@ export async function saveAvailability(formData: {
       slot_time: slot,
     }));
 
-    const { error: insertError } = await adminSupabase
+    const { error: insertError } = await supabase
       .from("teacher_availability")
       .insert(payload);
 
