@@ -3,6 +3,12 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
+type AvailabilitySlot = {
+  user_id: string;
+  available_date: string;
+  slot_time: string;
+};
+
 async function getSupabaseClient() {
   const cookieStore = await cookies();
   return createServerClient(
@@ -65,6 +71,66 @@ export type StaffScheduleHealth = {
   nextAppointment: string;
   availableSlotsLeft: number;
 };
+
+export async function saveAvailability(formData: {
+  allDayAvailable: boolean;
+  availabilityDate: string;
+  slots: string[];
+}) {
+  const supabase = await getSupabaseClient();
+
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return { error: "Please sign in again to continue." };
+  }
+
+  const { error: updateError } = await supabase
+    .from("system_user")
+    .update({ isAvailable: formData.allDayAvailable })
+    .eq("id", user.id);
+
+  if (updateError) {
+    return { error: updateError.message };
+  }
+
+  const adminSupabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SECRET_KEY!,
+    { cookies: { getAll: () => [], setAll: () => {} } }
+  );
+
+  const { error: deleteError } = await adminSupabase
+    .from("teacher_availability")
+    .delete()
+    .eq("user_id", user.id)
+    .eq("available_date", formData.availabilityDate);
+
+  if (deleteError) {
+    return { error: deleteError.message };
+  }
+
+  if (!formData.allDayAvailable && formData.slots.length > 0) {
+    const payload: AvailabilitySlot[] = formData.slots.map((slot) => ({
+      user_id: user.id,
+      available_date: formData.availabilityDate,
+      slot_time: slot,
+    }));
+
+    const { error: insertError } = await adminSupabase
+      .from("teacher_availability")
+      .insert(payload);
+
+    if (insertError) {
+      return { error: insertError.message };
+    }
+  }
+
+  return { success: true };
+}
 
 export async function fetchAdminSnapshot(): Promise<AdminSnapshot> {
   const supabase = await getSupabaseClient();

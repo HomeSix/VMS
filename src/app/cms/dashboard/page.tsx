@@ -22,6 +22,7 @@ import {
   fetchStaffScheduleHealth,
   fetchAdminTrends,
   fetchStaffTrends,
+  saveAvailability,
   type AdminSnapshot,
   type StaffSnapshot,
   type AdminScheduleHealth,
@@ -331,61 +332,19 @@ export default function DashboardPage() {
     setAvailabilityError(null);
     setAvailabilitySuccess(null);
 
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
+    const result = await saveAvailability({
+      allDayAvailable,
+      availabilityDate,
+      slots: availabilitySlots,
+    });
 
-    if (userError || !user) {
-      setAvailabilityError("Unable to update your profile.");
-      setAvailabilitySaving(false);
-      return;
+    if (result.error) {
+      setAvailabilityError(result.error);
+    } else {
+      setAvailabilitySuccess("Availability updated successfully.");
     }
-
-    const { error: updateError } = await supabase
-      .from("system_user")
-      .update({ isAvailable: allDayAvailable })
-      .eq("id", user.id);
-
-    if (updateError) {
-      setAvailabilityError(updateError.message);
-      setAvailabilitySaving(false);
-      return;
-    }
-
-    const { error: deleteError } = await supabase
-      .from("teacher_availability")
-      .delete()
-      .eq("user_id", user.id)
-      .eq("available_date", availabilityDate);
-
-    if (deleteError) {
-      setAvailabilityError(deleteError.message);
-      setAvailabilitySaving(false);
-      return;
-    }
-
-    if (!allDayAvailable && availabilitySlots.length > 0) {
-      const payload = availabilitySlots.map((slot) => ({
-        user_id: user.id,
-        available_date: availabilityDate,
-        slot_time: slot,
-      }));
-
-      const { error: insertError } = await supabase
-        .from("teacher_availability")
-        .insert(payload);
-
-      if (insertError) {
-        setAvailabilityError(insertError.message);
-        setAvailabilitySaving(false);
-        return;
-      }
-    }
-
-    setAvailabilitySuccess("Availability updated successfully.");
     setAvailabilitySaving(false);
-  }, [allDayAvailable, availabilityDate, availabilitySlots, supabase]);
+  }, [allDayAvailable, availabilityDate, availabilitySlots]);
 
   const isAdmin = context?.role === ADMIN_ROLE;
 
