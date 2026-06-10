@@ -168,15 +168,17 @@ export async function fetchStaffList(): Promise<StaffRecord[]> {
     throw new Error(error.message);
   }
 
-  return (data ?? []).map((row: any) => ({
-    id: row.id,
-    email: row.email,
-    full_name: row.full_name,
-    avatar_url: row.avatar_url,
-    is_active: row.is_active,
-    role_id: row.role_id,
-    role_name: row.roles?.name ?? null,
-  }));
+  return (data ?? [])
+    .filter((row: any) => row.roles?.name !== "rejected")
+    .map((row: any) => ({
+      id: row.id,
+      email: row.email,
+      full_name: row.full_name,
+      avatar_url: row.avatar_url,
+      is_active: row.is_active,
+      role_id: row.role_id,
+      role_name: row.roles?.name ?? null,
+    }));
 }
 
 export async function updateStaffStatus(
@@ -192,6 +194,36 @@ export async function updateStaffStatus(
 
   if (updateError) {
     throw new Error(updateError.message);
+  }
+}
+
+export async function rejectStaff(id: string): Promise<void> {
+  const supabase = await getSupabaseClient();
+
+  let { data: rejectedRole } = await supabase
+    .from("roles")
+    .select("id")
+    .eq("name", "rejected")
+    .maybeSingle();
+
+  if (!rejectedRole) {
+    const { data: newRole, error: createError } = await supabase
+      .from("roles")
+      .insert({ name: "rejected", description: "Rejected/soft-deleted users" })
+      .select("id")
+      .single();
+
+    if (createError) throw new Error(createError.message);
+    rejectedRole = newRole;
+  }
+
+  const { error } = await supabase
+    .from("system_user")
+    .update({ is_active: false, role_id: rejectedRole.id })
+    .eq("id", id);
+
+  if (error) {
+    throw new Error(error.message);
   }
 }
 

@@ -6,6 +6,7 @@ import {
   loadContext,
   fetchStaffList,
   updateStaffStatus,
+  rejectStaff,
   assignUserRole,
   fetchRoles,
   createRole,
@@ -103,11 +104,11 @@ export default function PermissionsPage() {
           </CardHeader>
           <CardContent>
             <div className="h-32 w-full rounded-xl bg-muted animate-pulse" />
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
 
   if (!context || context.role !== ADMIN_ROLE) {
     return null;
@@ -166,6 +167,7 @@ function StaffAccessTab({ onError }: { onError: (msg: string | null) => void }) 
   const [busyId, setBusyId] = useState<string | null>(null);
   const [roles, setRoles] = useState<RoleRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [rejectTarget, setRejectTarget] = useState<string | null>(null);
 
   const filteredRows = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -219,6 +221,20 @@ function StaffAccessTab({ onError }: { onError: (msg: string | null) => void }) 
     },
     [refresh, onError]
   );
+
+  const handleReject = useCallback(async () => {
+    if (!rejectTarget) return;
+    setBusyId(rejectTarget);
+    onError(null);
+    try {
+      await rejectStaff(rejectTarget);
+      await refresh();
+    } catch (err) {
+      onError(err instanceof Error ? err.message : "Failed to reject staff");
+    }
+    setBusyId(null);
+    setRejectTarget(null);
+  }, [rejectTarget, refresh, onError]);
 
   const changeRole = useCallback(
     async (userId: string, roleId: string) => {
@@ -332,11 +348,11 @@ function StaffAccessTab({ onError }: { onError: (msg: string | null) => void }) 
                             </Button>
                             <Button
                               size="sm"
-                              variant="outline"
-                              onClick={() => updateStatus(row.id, PENDING_STATUS)}
+                              variant="destructive"
+                              onClick={() => setRejectTarget(row.id)}
                               disabled={busyId === row.id}
                             >
-                              Keep pending
+                              Reject
                             </Button>
                           </div>
                         ) : (
@@ -358,6 +374,32 @@ function StaffAccessTab({ onError }: { onError: (msg: string | null) => void }) 
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={!!rejectTarget} onOpenChange={(open) => !open && setRejectTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reject staff</DialogTitle>
+            <DialogDescription>
+              This will remove their role and deactivate their account. They will no longer be able to access the CMS. This action can be undone by approving them later.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setRejectTarget(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleReject}
+              disabled={busyId === rejectTarget}
+            >
+              {busyId === rejectTarget ? "Rejecting..." : "Confirm Reject"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
