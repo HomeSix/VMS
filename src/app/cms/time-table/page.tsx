@@ -137,6 +137,7 @@ export default function TimeTablePage() {
 	);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
+	const [currentUserTeacher, setCurrentUserTeacher] = useState<TeacherRecord | null>(null);
 	const dateValue = date ? toDateKey(date) : "";
 
 	const [lecturerFilter, setLecturerFilter] = useState("");
@@ -213,6 +214,15 @@ export default function TimeTablePage() {
 					if (!role) return true;
 					return role === "staff" || role === "teacher";
 				});
+
+			const {
+				data: { user: authUser },
+			} = await supabase.auth.getUser();
+
+			const currentUser = authUser && normalizedTeachers.find(
+				(t) => t.id === authUser.id
+			);
+			setCurrentUserTeacher(currentUser ?? null);
 
 			const [bookingResult, availabilityResult] = await Promise.all([
 				supabase
@@ -408,7 +418,89 @@ export default function TimeTablePage() {
 				</div>
 			)}
 
+			{currentUserTeacher && !loading && (
+				<div className="rounded-lg border border-blue-200 bg-blue-50/50 shadow-sm overflow-hidden">
+					<div className="px-4 py-2 border-b border-blue-200 bg-blue-100/50">
+						<h2 className="text-sm font-semibold text-blue-800">My Schedule</h2>
+					</div>
+					<div className="overflow-x-auto">
+						<table className="w-full border-collapse text-xs">
+							<thead>
+								<tr>
+									<th className="sticky left-0 z-10 min-w-[180px] bg-blue-100/50 border-b border-r p-3 text-[11px] uppercase tracking-wider text-blue-700">
+										Teacher
+									</th>
+									{filteredSlotLabels.map((slotLabel, index) => (
+										<th
+											key={filteredTimeSlots[index]}
+											className="border-b border-r bg-blue-100/50 p-2 text-[10px] font-medium whitespace-nowrap text-blue-600"
+										>
+											{slotLabel}
+										</th>
+									))}
+								</tr>
+							</thead>
+							<tbody>
+								{(() => {
+									const t = currentUserTeacher;
+									const customSlots = availabilityByTeacher.get(t.id);
+									const hasCustomSlots = (customSlots?.size ?? 0) > 0;
+									const allDayAvailable = t.isAvailable && !hasCustomSlots;
+									const slots = computeTeacherSlots(
+										t.fullName,
+										hasCustomSlots,
+										customSlots,
+										allDayAvailable,
+										filteredTimeSlots
+									);
+									return (
+										<tr key={t.id} className="border-t">
+											<td className="sticky left-0 z-10 min-w-[180px] bg-white border-b border-r p-3 font-semibold text-sm whitespace-nowrap">
+												{t.fullName}
+												<span className="ml-2 text-[10px] font-normal text-blue-600">(You)</span>
+											</td>
+											{slots.map((item) => {
+												if (item.type === "hidden") return null;
+												const key = item.type === "booking"
+													? `${t.id}-my-${item.booking.id}`
+													: `${t.id}-my-${item.slotTime}`;
+												if (item.type === "booking") {
+													const b = item.booking;
+													const timeRange = `${b.start_time?.slice(0, 5) ?? ""} - ${b.end_time?.slice(0, 5) ?? ""}`;
+													const bgColor = getBookingColor(b.id);
+													return (
+														<td key={key} colSpan={item.colSpan} className="border-b border-r text-white h-14" style={{ backgroundColor: bgColor }}>
+															<div className="flex items-center justify-between gap-1 px-2 h-full">
+																<div className="min-w-0 flex-1">
+																	<div className="text-[11px] font-semibold leading-tight truncate">{b.full_name}</div>
+																	<div className="text-[9px] text-white/60 leading-tight truncate">{b.visit_reason || "No reason"}</div>
+																</div>
+															</div>
+														</td>
+													);
+												}
+												const cellClass = item.isAvailable ? "bg-emerald-50 text-emerald-700" : "bg-muted text-muted-foreground";
+												return (
+													<td key={key} className={`border-b border-r h-14 text-center align-middle text-[10px] ${cellClass}`}>
+														{item.label}
+													</td>
+												);
+											})}
+										</tr>
+									);
+								})()}
+							</tbody>
+						</table>
+					</div>
+				</div>
+			)}
+
 			<div className="overflow-hidden rounded-md border border-input bg-white shadow-sm">
+				{currentUserTeacher && (
+					<div className="px-4 py-2 border-b bg-muted/20">
+						<h2 className="text-sm font-semibold text-muted-foreground">All Teachers</h2>
+					</div>
+				)}
 				<div className="overflow-x-auto">
 					<table className="w-full border-collapse text-xs">
 						<thead>
