@@ -156,7 +156,7 @@ export async function loadContext(): Promise<ContextData | null> {
 
 // ─── Staff Access (approval) ────────────────────────────────────────────────
 
-export async function fetchStaffList(): Promise<StaffRecord[]> {
+export async function fetchStaffList(includeRejected = false): Promise<StaffRecord[]> {
   const supabase = await getSupabaseClient();
 
   const { data, error } = await supabase
@@ -169,7 +169,10 @@ export async function fetchStaffList(): Promise<StaffRecord[]> {
   }
 
   return (data ?? [])
-    .filter((row: any) => row.roles?.name !== "rejected")
+    .filter((row: any) => {
+      if (includeRejected) return true;
+      return row.roles?.name !== "rejected";
+    })
     .map((row: any) => ({
       id: row.id,
       email: row.email,
@@ -220,6 +223,32 @@ export async function rejectStaff(id: string): Promise<void> {
   const { error } = await supabase
     .from("system_user")
     .update({ is_active: false, role_id: rejectedRole.id })
+    .eq("id", id);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+export async function restoreStaff(id: string): Promise<void> {
+  const supabase = await getSupabaseClient();
+
+  let pendingRoleId = await getPendingRoleId(supabase);
+
+  if (!pendingRoleId) {
+    const { data: newRole, error: createError } = await supabase
+      .from("roles")
+      .insert({ name: "pending", description: "Awaiting approval" })
+      .select("id")
+      .single();
+
+    if (createError) throw new Error(createError.message);
+    pendingRoleId = newRole.id;
+  }
+
+  const { error } = await supabase
+    .from("system_user")
+    .update({ is_active: false, role_id: pendingRoleId })
     .eq("id", id);
 
   if (error) {
