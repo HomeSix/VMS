@@ -295,6 +295,13 @@ export function AppSidebar({ userRole }: { userRole?: string }) {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+       <div className="flex justify-center pt-2  border-sidebar-border mt-2 mb-2">
+          <img
+            src="/stek_logo.png"
+            alt="STEK Logo"
+            className="h-12 w-auto object-contain"
+          />
+        </div>
 
       <SidebarFooter className="p-3 border-t border-sidebar-border">
         <div className="relative group">
@@ -307,6 +314,7 @@ export function AppSidebar({ userRole }: { userRole?: string }) {
               collapsed && "px-2"
             )}
           >
+            
             <LogOut className="h-4 w-4" />
             <span className="ml-2 transition-all duration-200 ease-linear group-data-[collapsible=offcanvas]:w-0 group-data-[collapsible=offcanvas]:opacity-0 group-data-[collapsible=offcanvas]:overflow-hidden">Logout</span>
           </Button>
@@ -318,6 +326,7 @@ export function AppSidebar({ userRole }: { userRole?: string }) {
             </div>
           )}
         </div>
+       
       </SidebarFooter>
     </Sidebar>
   );

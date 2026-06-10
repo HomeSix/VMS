@@ -86,6 +86,13 @@ export default function Page() {
                         <p className="text-[10px] font-normal tracking-[0.2em] uppercase text-white/40">
                             SK SERI TELOK PARIT YAANI
                         </p>
+                        <div className="flex justify-center mt-3">
+                            <img
+                                src="/stek_logo.png"
+                                alt="STEK Logo"
+                                className="w-25 h-auto object-contain opacity-80"
+                            />
+                        </div>
                     </div>
 
                     <div className="px-10 py-10">

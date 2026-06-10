@@ -179,6 +179,7 @@ export default function CmsLoginPage() {
                 alt="School Badge"
                 className="w-32 h-auto object-contain mx-auto"
               />
+              
               <div className="space-y-2">
                 <h1 className="text-3xl font-bold">SK SERI TELOK</h1>
                 <h1 className="text-3xl font-bold">PARIT YAANI</h1>
@@ -186,6 +187,11 @@ export default function CmsLoginPage() {
               <p className="text-sidebar-accent-foreground text-sm max-w-xs mx-auto">
                 Visitor Management System
               </p>
+              <img
+                src="/stek_logo.png"
+                alt="STEK Logo"
+                className="w-20 h-auto object-contain mx-auto opacity-70"
+              />
             </div>
           </div>
 
