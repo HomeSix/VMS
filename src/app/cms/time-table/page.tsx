@@ -161,10 +161,14 @@ export default function TimeTablePage() {
 	);
 
 	const filteredTeachers = useMemo(() => {
-		if (!lecturerFilter.trim()) return teachers;
+		let result = teachers;
+		if (currentUserTeacher) {
+			result = result.filter((t) => t.id !== currentUserTeacher.id);
+		}
+		if (!lecturerFilter.trim()) return result;
 		const q = lecturerFilter.toLowerCase();
-		return teachers.filter((t) => t.fullName.toLowerCase().includes(q));
-	}, [teachers, lecturerFilter]);
+		return result.filter((t) => t.fullName.toLowerCase().includes(q));
+	}, [teachers, lecturerFilter, currentUserTeacher]);
 
 	const totalPages = Math.max(1, Math.ceil(filteredTeachers.length / PAGE_SIZE));
 	const safePage = Math.min(page, totalPages);
@@ -475,6 +479,69 @@ export default function TimeTablePage() {
 																	<div className="text-[11px] font-semibold leading-tight truncate">{b.full_name}</div>
 																	<div className="text-[9px] text-white/60 leading-tight truncate">{b.visit_reason || "No reason"}</div>
 																</div>
+																<Dialog>
+																	<DialogTrigger
+																		render={
+																			<Button variant="ghost" size="icon-sm" className="shrink-0 text-white hover:text-white hover:bg-white/20" />
+																		}
+																	>
+																		<Eye className="h-3.5 w-3.5" />
+																	</DialogTrigger>
+																	<DialogContent>
+																		<DialogHeader>
+																			<DialogTitle>Appointment Details</DialogTitle>
+																			<DialogDescription>
+																				{timeRange} &middot; {b.visit_date}
+																			</DialogDescription>
+																		</DialogHeader>
+																		<div className="space-y-3 text-sm">
+																			<div className="grid grid-cols-3 gap-1">
+																				<span className="text-muted-foreground">Teacher:</span>
+																				<span className="col-span-2 font-medium">{b.book_teacher}</span>
+																			</div>
+																			<div className="grid grid-cols-3 gap-1">
+																				<span className="text-muted-foreground">Visitor:</span>
+																				<span className="col-span-2 font-medium">{b.full_name}</span>
+																			</div>
+																			<div className="grid grid-cols-3 gap-1">
+																				<span className="text-muted-foreground">Phone:</span>
+																				<span className="col-span-2 font-medium">
+																					{b.dial_code}{b.phone_number}
+																				</span>
+																			</div>
+																			<div className="grid grid-cols-3 gap-1">
+																				<span className="text-muted-foreground">Email:</span>
+																				<span className="col-span-2 font-medium break-all">{b.email}</span>
+																			</div>
+																			<div className="grid grid-cols-3 gap-1">
+																				<span className="text-muted-foreground">Reason:</span>
+																				<span className="col-span-2">{b.visit_reason || "—"}</span>
+																			</div>
+																			<div className="grid grid-cols-3 gap-1">
+																				<span className="text-muted-foreground">Plate No:</span>
+																				<span className="col-span-2 font-medium">{b.plate_number || "—"}</span>
+																			</div>
+																			<div className="grid grid-cols-3 gap-1">
+																				<span className="text-muted-foreground">Approval:</span>
+																				<span className="col-span-2 font-medium capitalize">
+																					{b.book_status || "Pending"}
+																				</span>
+																			</div>
+																			<div className="grid grid-cols-3 gap-1">
+																				<span className="text-muted-foreground">Check-in:</span>
+																				<span className="col-span-2 font-medium">
+																					{b.status === true ? "Checked out" : b.status === false ? "Checked in" : "Not yet"}
+																				</span>
+																			</div>
+																			<div className="grid grid-cols-3 gap-1">
+																				<span className="text-muted-foreground">Booked at:</span>
+																				<span className="col-span-2 font-medium">
+																					{b.created_at ? new Date(b.created_at).toLocaleString("en-MY") : "—"}
+																				</span>
+																			</div>
+																		</div>
+																	</DialogContent>
+																</Dialog>
 															</div>
 														</td>
 													);
@@ -637,7 +704,7 @@ export default function TimeTablePage() {
 																			<div className="grid grid-cols-3 gap-1">
 																				<span className="text-muted-foreground">Check-in:</span>
 																				<span className="col-span-2 font-medium">
-																					{b.status ? "Checked in" : b.status === false ? "Checked out" : "Not yet"}
+																					{b.status === true ? "Checked out" : b.status === false ? "Checked in" : "Not yet"}
 																				</span>
 																			</div>
 																			<div className="grid grid-cols-3 gap-1">

@@ -112,22 +112,42 @@ export async function updateBookingApproval(
   const context = await assertApprovalsAccess();
   const supabase = await getSupabaseClient();
 
-  let query = supabase
-    .from("bookings")
-    .update({ book_status: status })
-    .eq("id", id);
-
-  if (context.role === SECURITY_ROLE) {
-    query = query.eq("email", context.email);
-  } else if (context.role === STAFF_ROLE) {
+  // Verify the user is authorized to approve this booking
+  if (context.role === STAFF_ROLE) {
     const staffName = await getStaffName(supabase, context.user_id);
     if (!staffName) {
       throw new Error("Staff name not found.");
     }
-    query = query.eq("book_teacher", staffName);
+    const { data: booking } = await supabase
+      .from("bookings")
+      .select("book_teacher")
+      .eq("id", id)
+      .maybeSingle();
+    if (!booking || booking.book_teacher !== staffName) {
+      throw new Error("You can only approve bookings assigned to you.");
+    }
+  } else if (context.role === SECURITY_ROLE) {
+    const { data: booking } = await supabase
+      .from("bookings")
+      .select("email")
+      .eq("id", id)
+      .maybeSingle();
+    if (!booking || booking.email !== context.email) {
+      throw new Error("You can only approve your own assigned bookings.");
+    }
   }
 
-  const { error } = await query;
+  // Use admin client to bypass RLS (users may not have UPDATE permission)
+  const adminSupabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SECRET_KEY!,
+    { cookies: { getAll: () => [], setAll: () => {} } }
+  );
+
+  const { error } = await adminSupabase
+    .from("bookings")
+    .update({ book_status: status })
+    .eq("id", id);
 
   if (error) {
     throw new Error(error.message);
@@ -167,25 +187,18 @@ export async function updateBookingVisitStatus(
   id: number,
   value: boolean
 ): Promise<void> {
-  const context = await assertApprovalsAccess();
-  const supabase = await getSupabaseClient();
+  await assertApprovalsAccess();
 
-  let query = supabase
+  const adminSupabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SECRET_KEY!,
+    { cookies: { getAll: () => [], setAll: () => {} } }
+  );
+
+  const { error } = await adminSupabase
     .from("bookings")
     .update({ status: value })
     .eq("id", id);
-
-  if (context.role === SECURITY_ROLE) {
-    query = query.eq("email", context.email);
-  } else if (context.role === STAFF_ROLE) {
-    const staffName = await getStaffName(supabase, context.user_id);
-    if (!staffName) {
-      throw new Error("Staff name not found.");
-    }
-    query = query.eq("book_teacher", staffName);
-  }
-
-  const { error } = await query;
 
   if (error) {
     throw new Error(error.message);
