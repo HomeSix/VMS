@@ -91,7 +91,7 @@ export async function fetchApprovalBookings(): Promise<BookingApprovalRecord[]> 
     }
     query = query
       .eq("book_teacher", staffName)
-      .or("book_status.is.null,book_status.eq.pending");
+      .or("book_status.is.null,book_status.eq.pending,book_status.eq.approved");
   }
 
   const { data, error } = await query
@@ -189,5 +189,82 @@ export async function updateBookingVisitStatus(
 
   if (error) {
     throw new Error(error.message);
+  }
+}
+
+export async function cancelBookingApproval(
+  id: number
+): Promise<void> {
+  const context = await assertApprovalsAccess();
+  const supabase = await getSupabaseClient();
+
+  let query = supabase
+    .from("bookings")
+    .update({ book_status: "pending" })
+    .eq("id", id);
+
+  if (context.role === STAFF_ROLE) {
+    const staffName = await getStaffName(supabase, context.user_id);
+    if (!staffName) {
+      throw new Error("Staff name not found.");
+    }
+    query = query.eq("book_teacher", staffName);
+  }
+
+  const { data: booking, error: updateError } = await query.select().maybeSingle();
+
+  if (updateError) {
+    throw new Error(updateError.message);
+  }
+
+  if (!booking) {
+    throw new Error("Booking not found or you don't have permission to cancel it.");
+  }
+
+  try {
+    const staffName = await getStaffName(supabase, context.user_id);
+    const staffEmail = context.email;
+
+    if (booking.email && booking.email !== WALK_IN_EMAIL) {
+      await sendEmail({
+        to: booking.email,
+        subject: "Your Booking Has Been Cancelled",
+        html: `
+          <h2>Booking Cancelled</h2>
+          <p>Dear ${booking.full_name},</p>
+          <p>Your visit booking for <strong>${booking.visit_date}</strong> at <strong>${booking.start_time}</strong> has been cancelled.</p>
+          <p>Please try booking again or contact the school for more information.</p>
+          <table>
+            <tr><td><strong>Date:</strong></td><td>${booking.visit_date}</td></tr>
+            <tr><td><strong>Time:</strong></td><td>${booking.start_time} - ${booking.end_time}</td></tr>
+            ${booking.book_teacher ? `<tr><td><strong>Teacher:</strong></td><td>${booking.book_teacher}</td></tr>` : ""}
+          </table>
+          <p>We apologise for any inconvenience.</p>
+        `,
+      });
+    }
+
+    if (staffEmail) {
+      const visitorPhone = booking.dial_code && booking.phone_number ? `${booking.dial_code} ${booking.phone_number}` : "No phone number";
+      await sendEmail({
+        to: staffEmail,
+        subject: "Booking Cancellation – Please Contact Visitor",
+        html: `
+          <h2>Booking Cancelled – Action Required</h2>
+          <p>Dear ${staffName || "Staff"},</p>
+          <p>You cancelled a booking for <strong>${booking.full_name}</strong>.</p>
+          <p>Please contact the visitor to inform them about the cancellation:</p>
+          <table>
+            <tr><td><strong>Visitor:</strong></td><td>${booking.full_name}</td></tr>
+            <tr><td><strong>Phone:</strong></td><td>${visitorPhone}</td></tr>
+            <tr><td><strong>Email:</strong></td><td>${booking.email || "N/A"}</td></tr>
+            <tr><td><strong>Date:</strong></td><td>${booking.visit_date}</td></tr>
+            <tr><td><strong>Time:</strong></td><td>${booking.start_time} - ${booking.end_time}</td></tr>
+          </table>
+        `,
+      });
+    }
+  } catch (emailErr) {
+    console.error("Failed to send cancellation email:", emailErr);
   }
 }

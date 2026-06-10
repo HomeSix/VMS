@@ -7,6 +7,7 @@ import {
   fetchApprovalBookings,
   updateBookingApproval,
   updateBookingVisitStatus,
+  cancelBookingApproval,
   type BookingApprovalRecord,
   type ApprovalStatus,
 } from "./actions";
@@ -171,6 +172,29 @@ export default function BookingApprovalsPage() {
     [context?.role]
   );
 
+  const handleCancel = useCallback(
+    async (booking: BookingApprovalRecord) => {
+      if (booking.id == null) return;
+      const visitorPhone = booking.dial_code && booking.phone_number ? `${booking.dial_code} ${booking.phone_number}` : "No phone";
+      if (!confirm(`Cancel this approved booking?\n\nVisitor: ${booking.full_name}\nPhone: ${visitorPhone}\n\nPlease contact them to inform about the cancellation.`)) return;
+      setBusyId(booking.id);
+      setError(null);
+      try {
+        await cancelBookingApproval(booking.id);
+        setBookings((prev) =>
+          prev.map((item) =>
+            item.id === booking.id ? { ...item, book_status: "pending" } : item
+          )
+        );
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to cancel booking.");
+      } finally {
+        setBusyId(null);
+      }
+    },
+    []
+  );
+
   const handleCheckOut = useCallback(
     async (booking: BookingApprovalRecord) => {
       if (booking.id == null) return;
@@ -332,6 +356,8 @@ export default function BookingApprovalsPage() {
                     const canReject = isPending;
                     const canCheckOut =
                       booking.book_status === "approved" && booking.status !== true;
+                    const canCancel =
+                      booking.book_status === "approved";
                     return (
                       <TableRow key={booking.id ?? booking.created_at ?? booking.full_name}>
                         <TableCell className="font-medium">
@@ -379,6 +405,16 @@ export default function BookingApprovalsPage() {
                                 disabled={booking.id == null || busyId === booking.id}
                               >
                                 Check out
+                              </Button>
+                            ) : null}
+                            {canCancel ? (
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => handleCancel(booking)}
+                                disabled={booking.id == null || busyId === booking.id}
+                              >
+                                Cancel
                               </Button>
                             ) : null}
                             <Dialog>

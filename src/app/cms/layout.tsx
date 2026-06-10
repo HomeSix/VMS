@@ -2,11 +2,13 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Bell, HelpCircle, Settings } from "lucide-react";
+import { Bell, HelpCircle, Settings, Clock, CheckCircle, XCircle } from "lucide-react";
 
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { createClient } from "@/lib/client";
 
 const ADMIN_ROLE = "admin";
@@ -23,6 +25,9 @@ export default function CmsLayout({
   const [userRole, setUserRole] = useState<string>("");
   const [userStatus, setUserStatus] = useState<string>(PENDING_STATUS);
   const [loading, setLoading] = useState(true);
+  const [pendingNotifCount, setPendingNotifCount] = useState(0);
+  const [notifItems, setNotifItems] = useState<any[]>([]);
+  const [notifOpen, setNotifOpen] = useState(false);
   const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
   const pathname = usePathname();
@@ -88,6 +93,52 @@ export default function CmsLayout({
     getUser();
   }, [supabase]);
 
+  useEffect(() => {
+    if (!userRole) return;
+    const loadData = async () => {
+      const currentUser = (await supabase.auth.getUser()).data.user;
+      if (!currentUser) return;
+
+      let staffName = "";
+      if (userRole !== "admin") {
+        const { data: userData } = await supabase
+          .from("system_user")
+          .select("full_name")
+          .eq("id", currentUser.id)
+          .maybeSingle();
+        staffName = String(userData?.full_name ?? "").trim();
+      }
+
+      let pendingQuery = supabase
+        .from("bookings")
+        .select("*", { count: "exact", head: true })
+        .or("book_status.is.null,book_status.eq.pending");
+
+      let notifQuery = supabase
+        .from("bookings")
+        .select("id, full_name, book_teacher, book_status, status, visit_date, created_at")
+        .order("created_at", { ascending: false })
+        .limit(10);
+
+      if (userRole === "staff" && staffName) {
+        pendingQuery = pendingQuery.eq("book_teacher", staffName);
+        notifQuery = notifQuery.eq("book_teacher", staffName);
+      } else if (userRole === "security") {
+        pendingQuery = pendingQuery.eq("email", currentUser.email);
+        notifQuery = notifQuery.eq("email", currentUser.email);
+      }
+
+      const { count } = await pendingQuery;
+      setPendingNotifCount(count ?? 0);
+
+      const { data } = await notifQuery;
+      setNotifItems(data ?? []);
+    };
+    void loadData();
+    const interval = setInterval(loadData, 30000);
+    return () => clearInterval(interval);
+  }, [supabase, userRole]);
+
   const isAdmin = userRole === ADMIN_ROLE;
   const isApproved = isAdmin || userStatus === APPROVED_STATUS;
   const isDashboard = pathname === "/cms/dashboard";
@@ -135,15 +186,58 @@ export default function CmsLayout({
               </div>
 
               <div className="flex items-center gap-1 sm:gap-2 ml-auto">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => router.push("/notifications")}
-                  className="relative"
-                >
-                  <Bell className="h-4 w-4" />
-                  <span className="sr-only">Notifications</span>
-                </Button>
+                <Popover open={notifOpen} onOpenChange={setNotifOpen}>
+                  <PopoverTrigger
+                    render={
+                      <Button variant="ghost" size="sm" className="relative">
+                        <Bell className="h-4 w-4" />
+                        {pendingNotifCount > 0 && (
+                          <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive text-[9px] font-bold text-destructive-foreground px-1">
+                            {pendingNotifCount > 9 ? "9+" : pendingNotifCount}
+                          </span>
+                        )}
+                        <span className="sr-only">Notifications</span>
+                      </Button>
+                    }
+                  />
+                  <PopoverContent className="w-80 p-0" align="end">
+                    <div className="p-3 border-b">
+                      <p className="text-sm font-semibold">Notifications</p>
+                      <p className="text-xs text-muted-foreground">Recent activity</p>
+                    </div>
+                    <div className="max-h-80 overflow-y-auto">
+                      {notifItems.length === 0 ? (
+                        <p className="text-sm text-muted-foreground text-center py-6">No recent activity.</p>
+                      ) : (
+                        notifItems.map((item: any) => {
+                          const diff = Date.now() - new Date(item.created_at).getTime();
+                          const mins = Math.floor(diff / 60000);
+                          const timeAgo = mins < 1 ? "Just now" : mins < 60 ? `${mins}m ago` : `${Math.floor(mins / 60)}h ago`;
+                          const statusLabel = item.book_status === "approved" ? "Approved" : item.book_status === "rejected" ? "Rejected" : "Pending";
+                          return (
+                            <div key={item.id} className="flex items-start gap-2 p-3 hover:bg-muted/40 transition-colors border-b last:border-b-0">
+                              <div className="shrink-0 mt-0.5">
+                                {item.book_status === "approved" ? <CheckCircle className="h-3.5 w-3.5 text-emerald-500" /> : item.book_status === "rejected" ? <XCircle className="h-3.5 w-3.5 text-rose-500" /> : <Clock className="h-3.5 w-3.5 text-amber-500" />}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-xs font-medium truncate">{item.full_name}</p>
+                                <p className="text-[10px] text-muted-foreground truncate">
+                                  {item.book_teacher && <>with {item.book_teacher}</>}
+                                </p>
+                              </div>
+                              <div className="shrink-0 text-right">
+                                <Badge variant="outline" className={`text-[9px] px-1 py-0 h-auto ${item.book_status === "approved" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : item.book_status === "rejected" ? "bg-rose-50 text-rose-700 border-rose-200" : "bg-amber-50 text-amber-700 border-amber-200"}`}>
+                                  {statusLabel}
+                                </Badge>
+                                <p className="text-[9px] text-muted-foreground mt-0.5">{timeAgo}</p>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </PopoverContent>
+                </Popover>
 
                 <Button
                   variant="ghost"
