@@ -153,7 +153,7 @@ export default function TeacherAvailabilityPage() {
     const [availabilityResult, bookingResult] = await Promise.all([
       supabase
         .from("teacher_availability")
-        .select("id, slot_time")  
+        .select("user_id, slot_time")  
         .eq("available_date", dateValue),
       supabase
         .from("bookings")
@@ -171,9 +171,9 @@ export default function TeacherAvailabilityPage() {
     }
 
     const slotMap = new Map<string, Set<string>>();
-    (availabilityResult.data ?? []).forEach((row: any) => {
-      const userId = String(row.id ?? "");
-      const slotTime = String(row.slot_time ?? "").slice(0, 5);
+      (availabilityResult.data ?? []).forEach((row: any) => {
+        const userId = String(row.user_id ?? "");
+        const slotTime = String(row.slot_time ?? "").slice(0, 5);
       if (!userId || slotTime.length !== 5) return;
       if (!slotMap.has(userId)) {
         slotMap.set(userId, new Set());

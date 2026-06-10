@@ -2,25 +2,25 @@
 -- These policies allow authenticated users to manage their own availability slots
 
 -- teacher_availability policies
-CREATE POLICY "Users can read their own availability"
+CREATE POLICY "Anyone can read teacher availability"
 ON teacher_availability
 FOR SELECT
-TO authenticated
-USING (auth.uid() = user_id);
+TO public
+USING (true);
 
-CREATE POLICY "Users can insert their own availability"
+CREATE POLICY "Users can insert own availability"
 ON teacher_availability
 FOR INSERT
 TO authenticated
 WITH CHECK (auth.uid() = user_id);
 
-CREATE POLICY "Users can delete their own availability"
+CREATE POLICY "Users can delete own availability"
 ON teacher_availability
 FOR DELETE
 TO authenticated
 USING (auth.uid() = user_id);
 
-CREATE POLICY "Users can update their own availability"
+CREATE POLICY "Users can update own availability"
 ON teacher_availability
 FOR UPDATE
 TO authenticated
