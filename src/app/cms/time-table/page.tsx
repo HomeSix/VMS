@@ -233,6 +233,7 @@ export default function TimeTablePage() {
 					.from("bookings")
 					.select("id, full_name, phone_number, email, visit_reason, visit_date, start_time, end_time, plate_number, created_at, dial_code, book_teacher, status, book_status")
 					.eq("visit_date", dateValue)
+					.or("book_status.is.null,book_status.neq.rejected")
 					.order("start_time", { ascending: true }),
 				supabase
 					.from("teacher_availability")
@@ -528,9 +529,9 @@ export default function TimeTablePage() {
 																				</span>
 																			</div>
 																			<div className="grid grid-cols-3 gap-1">
-																				<span className="text-muted-foreground">Check-in:</span>
+																				<span className="text-muted-foreground">Checkout:</span>
 																				<span className="col-span-2 font-medium">
-																					{b.status === true ? "Checked out" : b.status === false ? "Checked in" : "Not yet"}
+																					{b.status === true ? "Yes" : "No"}
 																				</span>
 																			</div>
 																			<div className="grid grid-cols-3 gap-1">
@@ -702,9 +703,9 @@ export default function TimeTablePage() {
 																				</span>
 																			</div>
 																			<div className="grid grid-cols-3 gap-1">
-																				<span className="text-muted-foreground">Check-in:</span>
+																				<span className="text-muted-foreground">Checkout:</span>
 																				<span className="col-span-2 font-medium">
-																					{b.status === true ? "Checked out" : b.status === false ? "Checked in" : "Not yet"}
+																					{b.status === true ? "Yes" : "No"}
 																				</span>
 																			</div>
 																			<div className="grid grid-cols-3 gap-1">

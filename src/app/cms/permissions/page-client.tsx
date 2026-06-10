@@ -62,6 +62,7 @@ import { StatCard } from "@/components/ui/stat-card";
 import { Shield, Users, FileLock, Plus, Pencil, Trash2 } from "lucide-react";
 
 const ADMIN_ROLE = "admin";
+const EXCLUDED_ROLES = ["admin", "pending", "rejected"];
 const PENDING_STATUS = false;
 const APPROVED_STATUS = true;
 
@@ -355,7 +356,7 @@ function StaffAccessTab({ onError }: { onError: (msg: string | null) => void }) 
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="none">No role</SelectItem>
-                            {roles.filter((r) => r.name !== ADMIN_ROLE).map((r) => (
+                            {roles.filter((r) => !EXCLUDED_ROLES.includes(r.name)).map((r) => (
                               <SelectItem key={r.id} value={r.id}>
                                 {r.name}
                               </SelectItem>
@@ -636,7 +637,7 @@ function PagePermissionsTab({ onError }: { onError: (msg: string | null) => void
     try {
       const data = await fetchRoles();
       // Filter out admin role to prevent configuration of admin permissions
-      const filteredRoles = data.filter(role => role.name !== ADMIN_ROLE);
+      const filteredRoles = data.filter(role => !EXCLUDED_ROLES.includes(role.name));
       setRoles(filteredRoles);
       if (filteredRoles.length > 0 && !selectedRoleId) {
         setSelectedRoleId(filteredRoles[0].id);
