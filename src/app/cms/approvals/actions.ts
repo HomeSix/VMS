@@ -68,7 +68,7 @@ async function getStaffName(supabase: Awaited<ReturnType<typeof getSupabaseClien
   return data?.full_name ?? "";
 }
 
-export async function fetchApprovalBookings(): Promise<BookingApprovalRecord[]> {
+export async function fetchApprovalBookings(date?: string, walkInOnly?: boolean): Promise<BookingApprovalRecord[]> {
   const context = await assertApprovalsAccess();
   const supabase = await getSupabaseClient();
 
@@ -81,9 +81,7 @@ export async function fetchApprovalBookings(): Promise<BookingApprovalRecord[]> 
   if (context.role === ADMIN_ROLE) {
     query = query.or("book_status.is.null,book_status.eq.pending");
   } else if (context.role === SECURITY_ROLE) {
-    query = query
-      .eq("email", context.email)
-      .or("book_status.is.null,book_status.eq.pending,book_status.eq.approved,book_status.eq.rejected");
+    query = query.or("book_status.is.null,book_status.eq.pending,book_status.eq.approved,book_status.eq.rejected");
   } else if (context.role === STAFF_ROLE) {
     const staffName = await getStaffName(supabase, context.user_id);
     if (!staffName) {
@@ -91,7 +89,15 @@ export async function fetchApprovalBookings(): Promise<BookingApprovalRecord[]> 
     }
     query = query
       .eq("book_teacher", staffName)
-      .or("book_status.is.null,book_status.eq.pending,book_status.eq.approved");
+      .or("book_status.is.null,book_status.eq.pending,book_status.eq.approved,book_status.eq.rejected");
+  }
+
+  if (date) {
+    query = query.eq("visit_date", date);
+  }
+
+  if (walkInOnly) {
+    query = query.eq("email", WALK_IN_EMAIL);
   }
 
   const { data, error } = await query

@@ -13,6 +13,7 @@ import {
 } from "./actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
 import {
   Card,
   CardAction,
@@ -28,6 +29,10 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { FieldLabel } from "@/components/ui/field";
+import { Label } from "@/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Switch } from "@/components/ui/switch";
 import {
   Table,
   TableBody,
@@ -48,6 +53,21 @@ const DATE_FORMATTER = new Intl.DateTimeFormat("en-MY", {
   month: "short",
   day: "numeric",
 });
+
+const toDateKey = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const formatDateForDisplay = (date: Date) =>
+  new Intl.DateTimeFormat("en-MY", {
+    weekday: "short",
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  }).format(date);
 
 function formatDate(value?: string | null) {
   if (!value) return "-";
@@ -106,7 +126,11 @@ export default function BookingApprovalsPage() {
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
   const [sortDirection, setSortDirection] = useState<"desc" | "asc">("desc");
+  const [dateOpen, setDateOpen] = useState(false);
+  const [date, setDate] = useState<Date | undefined>(undefined);
+  const [walkInOnly, setWalkInOnly] = useState(false);
   const router = useRouter();
+  const dateValue = date ? toDateKey(date) : "";
 
   const loadContextData = useCallback(async () => {
     setContextLoading(true);
@@ -124,6 +148,12 @@ export default function BookingApprovalsPage() {
   }, [loadContextData]);
 
   useEffect(() => {
+    if (context?.role === SECURITY_ROLE) {
+      setDate(new Date());
+    }
+  }, [context]);
+
+  useEffect(() => {
     if (contextLoading) return;
     if (!context || (context.role !== ADMIN_ROLE && context.role !== SECURITY_ROLE && context.role !== STAFF_ROLE)) {
       router.replace("/cms/dashboard");
@@ -134,14 +164,14 @@ export default function BookingApprovalsPage() {
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchApprovalBookings();
+      const data = await fetchApprovalBookings(dateValue, walkInOnly);
       setBookings(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load bookings.");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [dateValue, walkInOnly]);
 
   useEffect(() => {
     if (!context || (context.role !== ADMIN_ROLE && context.role !== SECURITY_ROLE && context.role !== STAFF_ROLE)) return;
@@ -279,16 +309,67 @@ export default function BookingApprovalsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold">Booking approvals</h1>
           <p className="text-sm text-muted-foreground">
             {headerDescription}
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={loadBookings} disabled={loading}>
-          Refresh
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          {isSecurity && (
+            <div className="flex items-center gap-2 text-sm">
+              <FieldLabel
+                htmlFor="approvals-date"
+                className="text-xs font-medium uppercase tracking-wider text-muted-foreground"
+              >
+                Date
+              </FieldLabel>
+              <Popover open={dateOpen} onOpenChange={setDateOpen}>
+                <PopoverTrigger
+                  render={
+                    <Button
+                      variant="outline"
+                      id="approvals-date"
+                      className="w-60 justify-between font-normal"
+                    >
+                      {date ? formatDateForDisplay(date) : "Select date"}
+                      <ChevronDownIcon data-icon="inline-end" />
+                    </Button>
+                  }
+                />
+                <PopoverContent className="w-auto overflow-hidden p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={date}
+                    captionLayout="dropdown"
+                    defaultMonth={date}
+                    onSelect={(nextDate) => {
+                      setDate(nextDate);
+                      setDateOpen(false);
+                    }}
+                  />
+                </PopoverContent>
+              </Popover>
+              {date && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setDate(undefined);
+                    setDateOpen(false);
+                  }}
+                  aria-label="Display all appointments"
+                >
+                  Display All
+                </Button>
+              )}
+            </div>
+          )}
+          <Button variant="outline" size="sm" onClick={loadBookings} disabled={loading}>
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {error && <p className="text-sm font-medium text-destructive">{error}</p>}
@@ -297,22 +378,39 @@ export default function BookingApprovalsPage() {
         <CardHeader>
           <CardTitle>{tableTitle}</CardTitle>
           <CardDescription>
-            {loading ? "Loading data..." : `Total ${summary.total} request(s)`}
+            {loading
+              ? "Loading data..."
+              : `Total ${summary.total} request(s)${dateValue ? ` for ${dateValue}` : ""}`}
           </CardDescription>
           <CardAction>
-            <Button
-              variant="outline"
-              size="icon-sm"
-              onClick={() =>
-                setSortDirection((current) =>
-                  current === "desc" ? "asc" : "desc"
-                )
-              }
-              aria-label="Sort by visit date"
-              title={isLatestFirst ? "Latest first" : "Earliest first"}
-            >
-              {isLatestFirst ? <ChevronDownIcon /> : <ChevronUpIcon />}
-            </Button>
+            <div className="flex items-center gap-3">
+              {isSecurity && (
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="walk-in-only" className="text-xs">
+                    Walk-In only
+                  </Label>
+                  <Switch
+                    id="walk-in-only"
+                    checked={walkInOnly}
+                    onCheckedChange={setWalkInOnly}
+                    disabled={loading}
+                  />
+                </div>
+              )}
+              <Button
+                variant="outline"
+                size="icon-sm"
+                onClick={() =>
+                  setSortDirection((current) =>
+                    current === "desc" ? "asc" : "desc"
+                  )
+                }
+                aria-label="Sort by visit date"
+                title={isLatestFirst ? "Latest first" : "Earliest first"}
+              >
+                {isLatestFirst ? <ChevronDownIcon /> : <ChevronUpIcon />}
+              </Button>
+            </div>
           </CardAction>
         </CardHeader>
         <CardContent>
@@ -352,12 +450,13 @@ export default function BookingApprovalsPage() {
                     const approvalStatus = getApprovalStatus(booking.book_status);
                     const isPending =
                       booking.book_status == null || booking.book_status === "pending";
-                    const canApprove = isPending;
-                    const canReject = isPending;
+                    const isWalkIn = booking.email === "security@example.com";
+                    const canApprove = isPending && isWalkIn;
+                    const canReject = isPending && isWalkIn;
                     const canCheckOut =
-                      booking.book_status === "approved" && booking.status !== true;
+                      booking.book_status === "approved" && booking.status !== true && isWalkIn;
                     const canCancel =
-                      booking.book_status === "approved";
+                      booking.book_status === "approved" && isWalkIn;
                     return (
                       <TableRow key={booking.id ?? booking.created_at ?? booking.full_name}>
                         <TableCell className="font-medium">
