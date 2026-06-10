@@ -50,6 +50,7 @@ type BookingDetail = {
 	dial_code: string | null;
 	book_teacher: string | null;
 	status: boolean | null;
+	book_status: string | null;
 };
 
 type SlotRenderItem =
@@ -216,7 +217,7 @@ export default function TimeTablePage() {
 			const [bookingResult, availabilityResult] = await Promise.all([
 				supabase
 					.from("bookings")
-					.select("id, full_name, phone_number, email, visit_reason, visit_date, start_time, end_time, plate_number, created_at, dial_code, book_teacher, status")
+					.select("id, full_name, phone_number, email, visit_reason, visit_date, start_time, end_time, plate_number, created_at, dial_code, book_teacher, status, book_status")
 					.eq("visit_date", dateValue)
 					.order("start_time", { ascending: true }),
 				supabase
@@ -536,9 +537,15 @@ export default function TimeTablePage() {
 																				<span className="col-span-2 font-medium">{b.plate_number || "—"}</span>
 																			</div>
 																			<div className="grid grid-cols-3 gap-1">
-																				<span className="text-muted-foreground">Status:</span>
+																				<span className="text-muted-foreground">Approval:</span>
+																				<span className="col-span-2 font-medium capitalize">
+																					{b.book_status || "Pending"}
+																				</span>
+																			</div>
+																			<div className="grid grid-cols-3 gap-1">
+																				<span className="text-muted-foreground">Check-in:</span>
 																				<span className="col-span-2 font-medium">
-																					{b.status ? "Confirmed" : "Pending"}
+																					{b.status ? "Checked in" : b.status === false ? "Checked out" : "Not yet"}
 																				</span>
 																			</div>
 																			<div className="grid grid-cols-3 gap-1">
