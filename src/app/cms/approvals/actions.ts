@@ -127,14 +127,10 @@ export async function updateBookingApproval(
     query = query.eq("book_teacher", staffName);
   }
 
-  const { data, error } = await query.select().maybeSingle();
+  const { error } = await query;
 
   if (error) {
     throw new Error(error.message);
-  }
-
-  if (!data) {
-    throw new Error("Booking not found or you don't have permission to update it.");
   }
 
   try {
@@ -171,20 +167,27 @@ export async function updateBookingVisitStatus(
   id: number,
   value: boolean
 ): Promise<void> {
+  const context = await assertApprovalsAccess();
   const supabase = await getSupabaseClient();
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("bookings")
     .update({ status: value })
-    .eq("id", id)
-    .select()
-    .maybeSingle();
+    .eq("id", id);
+
+  if (context.role === SECURITY_ROLE) {
+    query = query.eq("email", context.email);
+  } else if (context.role === STAFF_ROLE) {
+    const staffName = await getStaffName(supabase, context.user_id);
+    if (!staffName) {
+      throw new Error("Staff name not found.");
+    }
+    query = query.eq("book_teacher", staffName);
+  }
+
+  const { error } = await query;
 
   if (error) {
     throw new Error(error.message);
-  }
-
-  if (!data) {
-    throw new Error("Booking not found or you don't have permission to update it.");
   }
 }
