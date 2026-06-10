@@ -185,13 +185,7 @@ export default function BookingSchedulePage() {
           .filter((s) => s.length === 5)
       );
 
-      if (customSlots.size > 0) {
-        setTeacherAllowedSlots(customSlots);
-      } else if (teacher.isAvailable) {
-        setTeacherAllowedSlots(null);
-      } else {
-        setTeacherAllowedSlots(new Set());
-      }
+      setTeacherAllowedSlots(customSlots.size > 0 ? customSlots : null);
     };
 
     void loadAvailability();

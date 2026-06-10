@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { loadContext, type ContextData } from "../permissions/actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -148,8 +148,6 @@ export default function DashboardPage() {
     }
   }, []);
 
-  const initialLoadDone = useRef(false);
-
   const loadAvailability = useCallback(async () => {
     if (!context || context.role === ADMIN_ROLE) return;
     setAvailabilityLoading(true);
@@ -167,18 +165,6 @@ export default function DashboardPage() {
       return;
     }
 
-    if (!initialLoadDone.current) {
-      const { data: userRecord } = await supabase
-        .from("system_user")
-        .select("isAvailable")
-        .eq("id", user.id)
-        .maybeSingle();
-
-      const raw = userRecord?.isAvailable;
-      const allDay = raw === null || raw === undefined || raw === true || raw === "true";
-      setAllDayAvailable(allDay);
-    }
-
     const { data: slotRows } = await supabase
       .from("teacher_availability")
       .select("slot_time")
@@ -189,6 +175,7 @@ export default function DashboardPage() {
       .map((row: any) => String(row.slot_time ?? "").slice(0, 5))
       .filter((slot) => slot.length === 5);
 
+    setAllDayAvailable(slots.length === 0);
     setAvailabilitySlots(slots);
     setAvailabilityLoading(false);
   }, [availabilityDate, context, supabase]);
@@ -196,7 +183,6 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!context || context.role === ADMIN_ROLE) return;
     void loadAvailability();
-    initialLoadDone.current = true;
   }, [context, loadAvailability]);
 
   useEffect(() => {
