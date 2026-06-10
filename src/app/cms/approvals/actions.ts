@@ -3,9 +3,12 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { loadContext } from "../permissions/actions";
+import { sendEmail } from "@/lib/mail";
 
 const ADMIN_ROLE = "admin";
 const SECURITY_ROLE = "security";
+const STAFF_ROLE = "staff";
+const WALK_IN_EMAIL = "security@example.com";
 
 export type ApprovalStatus = "pending" | "approved" | "rejected";
 
@@ -34,6 +37,15 @@ async function getSupabaseClient() {
     {
       cookies: {
         getAll: () => cookieStore.getAll(),
+        setAll: (cookiesToSet) => {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            )
+          } catch {
+            // Called from Server Component - can be ignored if middleware refreshes sessions
+          }
+        },
       },
     }
   );
@@ -41,10 +53,19 @@ async function getSupabaseClient() {
 
 async function assertApprovalsAccess() {
   const context = await loadContext();
-  if (!context || (context.role !== ADMIN_ROLE && context.role !== SECURITY_ROLE)) {
+  if (!context || (context.role !== ADMIN_ROLE && context.role !== SECURITY_ROLE && context.role !== STAFF_ROLE)) {
     throw new Error("You are not authorized to access booking approvals.");
   }
   return context;
+}
+
+async function getStaffName(supabase: Awaited<ReturnType<typeof getSupabaseClient>>, userId: string) {
+  const { data } = await supabase
+    .from("system_user")
+    .select("full_name")
+    .eq("id", userId)
+    .maybeSingle();
+  return data?.full_name ?? "";
 }
 
 export async function fetchApprovalBookings(): Promise<BookingApprovalRecord[]> {
@@ -63,6 +84,14 @@ export async function fetchApprovalBookings(): Promise<BookingApprovalRecord[]> 
     query = query
       .eq("email", context.email)
       .or("book_status.is.null,book_status.eq.pending,book_status.eq.approved,book_status.eq.rejected");
+  } else if (context.role === STAFF_ROLE) {
+    const staffName = await getStaffName(supabase, context.user_id);
+    if (!staffName) {
+      return [];
+    }
+    query = query
+      .eq("book_teacher", staffName)
+      .or("book_status.is.null,book_status.eq.pending");
   }
 
   const { data, error } = await query
@@ -90,12 +119,47 @@ export async function updateBookingApproval(
 
   if (context.role === SECURITY_ROLE) {
     query = query.eq("email", context.email);
+  } else if (context.role === STAFF_ROLE) {
+    const staffName = await getStaffName(supabase, context.user_id);
+    if (!staffName) {
+      throw new Error("Staff name not found.");
+    }
+    query = query.eq("book_teacher", staffName);
   }
 
   const { error } = await query;
 
   if (error) {
     throw new Error(error.message);
+  }
+
+  try {
+    const { data: booking } = await supabase
+      .from("bookings")
+      .select("full_name, email, visit_date, start_time, end_time, book_teacher, dial_code, phone_number")
+      .eq("id", id)
+      .maybeSingle();
+
+    if (booking?.email && booking.email !== WALK_IN_EMAIL) {
+      const statusLabel = status === "approved" ? "Approved" : "Rejected";
+      await sendEmail({
+        to: booking.email,
+        subject: `Your Visit Booking has been ${statusLabel}`,
+        html: `
+          <h2>Booking ${statusLabel}</h2>
+          <p>Dear ${booking.full_name},</p>
+          <p>Your visit booking has been <strong>${statusLabel.toUpperCase()}</strong>.</p>
+          <table>
+            <tr><td><strong>Status:</strong></td><td>${statusLabel}</td></tr>
+            <tr><td><strong>Date:</strong></td><td>${booking.visit_date}</td></tr>
+            <tr><td><strong>Time:</strong></td><td>${booking.start_time} - ${booking.end_time}</td></tr>
+            ${booking.book_teacher ? `<tr><td><strong>Teacher:</strong></td><td>${booking.book_teacher}</td></tr>` : ""}
+          </table>
+        `,
+      })
+    }
+  } catch (emailErr) {
+    console.error("Failed to send approval email:", emailErr)
   }
 }
 
@@ -113,6 +177,12 @@ export async function updateBookingVisitStatus(
 
   if (context.role === SECURITY_ROLE) {
     query = query.eq("email", context.email);
+  } else if (context.role === STAFF_ROLE) {
+    const staffName = await getStaffName(supabase, context.user_id);
+    if (!staffName) {
+      throw new Error("Staff name not found.");
+    }
+    query = query.eq("book_teacher", staffName);
   }
 
   const { error } = await query;

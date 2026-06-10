@@ -40,6 +40,7 @@ import { ChevronDownIcon, ChevronUpIcon } from "lucide-react";
 
 const ADMIN_ROLE = "admin";
 const SECURITY_ROLE = "security";
+const STAFF_ROLE = "staff";
 
 const DATE_FORMATTER = new Intl.DateTimeFormat("en-MY", {
   year: "numeric",
@@ -123,7 +124,7 @@ export default function BookingApprovalsPage() {
 
   useEffect(() => {
     if (contextLoading) return;
-    if (!context || (context.role !== ADMIN_ROLE && context.role !== SECURITY_ROLE)) {
+    if (!context || (context.role !== ADMIN_ROLE && context.role !== SECURITY_ROLE && context.role !== STAFF_ROLE)) {
       router.replace("/cms/dashboard");
     }
   }, [contextLoading, context, router]);
@@ -142,7 +143,7 @@ export default function BookingApprovalsPage() {
   }, []);
 
   useEffect(() => {
-    if (!context || (context.role !== ADMIN_ROLE && context.role !== SECURITY_ROLE)) return;
+    if (!context || (context.role !== ADMIN_ROLE && context.role !== SECURITY_ROLE && context.role !== STAFF_ROLE)) return;
     void loadBookings();
   }, [context, loadBookings]);
 
@@ -239,14 +240,17 @@ export default function BookingApprovalsPage() {
     );
   }
 
-  if (!context || (context.role !== ADMIN_ROLE && context.role !== SECURITY_ROLE)) {
+  if (!context || (context.role !== ADMIN_ROLE && context.role !== SECURITY_ROLE && context.role !== STAFF_ROLE)) {
     return null;
   }
 
   const isSecurity = context.role === SECURITY_ROLE;
+  const isStaff = context.role === STAFF_ROLE;
   const headerDescription = isSecurity
     ? "Review bookings assigned to your security account."
-    : "Review pending bookings and decide whether to approve or reject them.";
+    : isStaff
+      ? "Review pending bookings from visitors who want to meet you."
+      : "Review pending bookings and decide whether to approve or reject them.";
   const tableTitle = isSecurity ? "Assigned bookings" : "Pending bookings";
 
   return (

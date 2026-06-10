@@ -11,6 +11,15 @@ async function getSupabaseClient() {
     {
       cookies: {
         getAll: () => cookieStore.getAll(),
+        setAll: (cookiesToSet) => {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            )
+          } catch {
+            // Called from Server Component - can be ignored if middleware refreshes sessions
+          }
+        },
       },
     }
   );

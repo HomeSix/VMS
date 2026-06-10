@@ -106,7 +106,7 @@ export default function BookingSchedulePage() {
 
       const { data, error } = await supabase
         .from("system_user")
-        .select("id, full_name")
+        .select("id, full_name, roles(name)")
         .order("full_name", { ascending: true })
 
       if (error) {
@@ -116,7 +116,8 @@ export default function BookingSchedulePage() {
       }
 
       const normalized = (data ?? [])
-        .map((row) => ({
+        .filter((row: any) => row.roles?.name !== "admin")
+        .map((row: any) => ({
           id: String(row.id),
           fullName: String(row.full_name ?? "").trim(),
         }))

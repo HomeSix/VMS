@@ -13,11 +13,6 @@ export async function GET(request: Request) {
   }
 
   const cookieStore = await cookies();
-  const cookiesToSet: Array<{
-    name: string;
-    value: string;
-    options: any;
-  }> = [];
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -27,7 +22,7 @@ export async function GET(request: Request) {
         getAll: () => cookieStore.getAll(),
         setAll: (newCookies) => {
           newCookies.forEach(({ name, value, options }) => {
-            cookiesToSet.push({ name, value, options });
+            cookieStore.set(name, value, options);
           });
         },
       },
@@ -116,11 +111,5 @@ export async function GET(request: Request) {
   }
 
   const target = "/cms/dashboard";
-  const response = NextResponse.redirect(new URL(target, origin));
-
-  cookiesToSet.forEach(({ name, value, options }) => {
-    response.cookies.set(name, value, options);
-  });
-
-  return response;
+  return NextResponse.redirect(new URL(target, origin));
 }

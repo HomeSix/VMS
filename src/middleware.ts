@@ -7,6 +7,7 @@ export const config = {
 
 const ADMIN_ROLE = "admin";
 const SECURITY_ROLE = "security";
+const STAFF_ROLE = "staff";
 const APPROVED_STATUS = true;
 
 // Normalize paths for consistent comparison
@@ -35,8 +36,8 @@ export async function middleware(request: NextRequest) {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
-          // Required for SSR auth to work properly
           cookiesToSet.forEach(({ name, value, options }) => {
+            request.cookies.set(name, value);
             response.cookies.set(name, value, options);
           });
         },
@@ -44,16 +45,7 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  const { data } = await supabase.auth.getSession();
-  const session = data.session;
   const pathname = request.nextUrl.pathname;
-
-  if (!session) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/auth/login";
-    url.searchParams.set("redirectTo", pathname);
-    return NextResponse.redirect(url);
-  }
 
   const { data: userData } = await supabase.auth.getUser();
   const user = userData?.user;
@@ -92,6 +84,7 @@ export async function middleware(request: NextRequest) {
   const isApprovals = pathname === "/cms/approvals";
   const isAdmin = roleName === ADMIN_ROLE;
   const isSecurity = roleName === SECURITY_ROLE;
+  const isStaff = roleName === STAFF_ROLE;
   const isApproved = isAdmin || userRoleData?.is_active === APPROVED_STATUS;
 
   // Always allow the denied page
@@ -113,6 +106,16 @@ export async function middleware(request: NextRequest) {
 
   // Security role: only dashboard + approvals
   if (isSecurity) {
+    if (isDashboard || isApprovals) {
+      return NextResponse.next();
+    }
+    const url = request.nextUrl.clone();
+    url.pathname = "/cms/denied";
+    return NextResponse.redirect(url);
+  }
+
+  // Staff role: allow dashboard + approvals
+  if (isStaff) {
     if (isDashboard || isApprovals) {
       return NextResponse.next();
     }

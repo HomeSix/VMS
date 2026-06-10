@@ -190,7 +190,7 @@ export function AppSidebar({ userRole }: { userRole?: string }) {
       return null;
     }
 
-    if (item.href === "/cms/approvals" && userRole !== "admin" && userRole !== SECURITY_ROLE) {
+    if (item.href === "/cms/approvals" && userRole !== "admin" && userRole !== SECURITY_ROLE && userRole !== "staff") {
       return null;
     }
 

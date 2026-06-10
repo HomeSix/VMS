@@ -5,7 +5,7 @@ import { useState } from "react"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
 
 import { translations, type Locale } from "@/lib/translations"
-import { createClient } from "@/lib/client"
+import { createBooking } from "./actions"
 
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
 import {
@@ -138,9 +138,7 @@ export default function BookingPage() {
 
     setIsSubmitting(true)
 
-    const supabase = createClient()
-
-    const { error } = await supabase.from("bookings").insert({
+    const result = await createBooking({
       full_name: fullNameValue.trim(),
       dial_code: dialCodeValue,
       phone_number: phoneNumberValue.trim(),
@@ -151,11 +149,10 @@ export default function BookingPage() {
       end_time: selectedEndTime,
       plate_number: hasCar ? plateNumberValue.trim() : null,
       book_teacher: selectedTeacher ? selectedTeacher.trim() : null,
-      book_status: "pending",
     })
 
-    if (error) {
-      setSubmitError(error.message)
+    if (result.error) {
+      setSubmitError(result.error)
       setIsSubmitting(false)
       return
     }
