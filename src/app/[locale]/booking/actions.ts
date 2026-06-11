@@ -60,36 +60,52 @@ export async function createBooking(input: CreateBookingInput) {
     return { success: false, error: error.message }
   }
 
-  if (input.book_teacher) {
-    try {
-      const { data: teacher, error: lookupError } = await supabase
+  // Notify all admins and superadmins about the new booking
+  try {
+    const { data: roleData } = await supabase
+      .from("roles")
+      .select("id, name")
+      .in("name", ["admin", "superadmin"])
+
+    if (roleData && roleData.length > 0) {
+      const roleIds = roleData.map((r: any) => r.id)
+
+      const { data: adminUsers } = await supabase
         .from("system_user")
         .select("email")
-        .eq("full_name", input.book_teacher)
-        .maybeSingle()
+        .in("role_id", roleIds)
+        .not("email", "is", null)
 
-      if (!lookupError && teacher?.email) {
-        await sendEmail({
-          to: teacher.email,
-          subject: `New Booking from ${input.full_name}`,
-          html: `
-            <h2>New Visit Booking Notification</h2>
-            <p>A visitor has booked to meet with you.</p>
-            <table>
-              <tr><td><strong>Name:</strong></td><td>${input.full_name}</td></tr>
-              <tr><td><strong>Phone:</strong></td><td>${input.dial_code} ${input.phone_number}</td></tr>
-              ${input.email ? `<tr><td><strong>Email:</strong></td><td>${input.email}</td></tr>` : ""}
-              <tr><td><strong>Date:</strong></td><td>${input.visit_date}</td></tr>
-              <tr><td><strong>Time:</strong></td><td>${input.start_time} - ${input.end_time}</td></tr>
-              <tr><td><strong>Reason:</strong></td><td>${input.visit_reason}</td></tr>
-              ${input.plate_number ? `<tr><td><strong>Plate Number:</strong></td><td>${input.plate_number}</td></tr>` : ""}
-            </table>
-          `,
-        })
+      if (adminUsers && adminUsers.length > 0) {
+        const adminEmails = adminUsers
+          .map((u: any) => u.email)
+          .filter(Boolean)
+
+        if (adminEmails.length > 0) {
+          await sendEmail({
+            to: adminEmails,
+            subject: `New Booking from ${input.full_name}`,
+            html: `
+              <h2>New Visit Booking Notification</h2>
+              <p>A visitor has booked an appointment with <strong>${input.book_teacher || "a teacher"}</strong>.</p>
+              <table>
+                <tr><td><strong>Name:</strong></td><td>${input.full_name}</td></tr>
+                <tr><td><strong>Phone:</strong></td><td>${input.dial_code} ${input.phone_number}</td></tr>
+                ${input.email ? `<tr><td><strong>Email:</strong></td><td>${input.email}</td></tr>` : ""}
+                <tr><td><strong>Teacher:</strong></td><td>${input.book_teacher || "-"}</td></tr>
+                <tr><td><strong>Date:</strong></td><td>${input.visit_date}</td></tr>
+                <tr><td><strong>Time:</strong></td><td>${input.start_time} - ${input.end_time}</td></tr>
+                <tr><td><strong>Reason:</strong></td><td>${input.visit_reason}</td></tr>
+                ${input.plate_number ? `<tr><td><strong>Plate Number:</strong></td><td>${input.plate_number}</td></tr>` : ""}
+              </table>
+              <p>Please review and approve or reject this booking in the CMS.</p>
+            `,
+          })
+        }
       }
-    } catch {
-      // Email notification is non-critical; booking is already created
     }
+  } catch {
+    // Email notification is non-critical; booking is already created
   }
 
   return { success: true, error: null }

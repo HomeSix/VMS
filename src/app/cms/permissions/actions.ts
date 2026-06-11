@@ -464,7 +464,7 @@ export async function canAccessPage(
     roleName = roleInfo?.name ?? "";
   }
 
-  if (roleName === "admin") {
+  if (roleName === "admin" || roleName === "superadmin") {
     return { allowed: true, roleName };
   }
 

@@ -6,8 +6,7 @@ import { loadContext } from "../permissions/actions";
 import { sendEmail } from "@/lib/mail";
 
 const ADMIN_ROLE = "admin";
-const SECURITY_ROLE = "security";
-const STAFF_ROLE = "staff";
+const SUPERADMIN_ROLE = "superadmin";
 const WALK_IN_EMAIL = "security@example.com";
 
 export type ApprovalStatus = "pending" | "approved" | "rejected";
@@ -53,51 +52,25 @@ async function getSupabaseClient() {
 
 async function assertApprovalsAccess() {
   const context = await loadContext();
-  if (!context || (context.role !== ADMIN_ROLE && context.role !== SECURITY_ROLE && context.role !== STAFF_ROLE)) {
+  if (!context || (context.role !== ADMIN_ROLE && context.role !== SUPERADMIN_ROLE)) {
     throw new Error("You are not authorized to access booking approvals.");
   }
   return context;
 }
 
-async function getStaffName(supabase: Awaited<ReturnType<typeof getSupabaseClient>>, userId: string) {
-  const { data } = await supabase
-    .from("system_user")
-    .select("full_name")
-    .eq("id", userId)
-    .maybeSingle();
-  return data?.full_name ?? "";
-}
-
 export async function fetchApprovalBookings(date?: string, walkInOnly?: boolean): Promise<BookingApprovalRecord[]> {
-  const context = await assertApprovalsAccess();
+  await assertApprovalsAccess();
   const supabase = await getSupabaseClient();
 
   let query = supabase
     .from("bookings")
     .select(
       "id, full_name, phone_number, email, visit_reason, visit_date, start_time, end_time, plate_number, created_at, dial_code, book_teacher, status, book_status"
-    );
-
-  if (context.role === ADMIN_ROLE) {
-    query = query.or("book_status.is.null,book_status.eq.pending");
-  } else if (context.role === SECURITY_ROLE) {
-    query = query.or("book_status.is.null,book_status.eq.pending,book_status.eq.approved,book_status.eq.rejected");
-  } else if (context.role === STAFF_ROLE) {
-    const staffName = await getStaffName(supabase, context.user_id);
-    if (!staffName) {
-      return [];
-    }
-    query = query
-      .eq("book_teacher", staffName)
-      .or("book_status.is.null,book_status.eq.pending,book_status.eq.approved,book_status.eq.rejected");
-  }
+    )
+    .or("book_status.is.null,book_status.eq.pending");
 
   if (date) {
     query = query.eq("visit_date", date);
-  }
-
-  if (walkInOnly) {
-    query = query.eq("email", WALK_IN_EMAIL);
   }
 
   const { data, error } = await query
@@ -115,25 +88,13 @@ export async function updateBookingApproval(
   id: number,
   status: Exclude<ApprovalStatus, "pending">
 ): Promise<void> {
-  const context = await assertApprovalsAccess();
+  await assertApprovalsAccess();
   const supabase = await getSupabaseClient();
 
-  let query = supabase
+  const { error } = await supabase
     .from("bookings")
     .update({ book_status: status })
     .eq("id", id);
-
-  if (context.role === SECURITY_ROLE) {
-    query = query.eq("email", context.email);
-  } else if (context.role === STAFF_ROLE) {
-    const staffName = await getStaffName(supabase, context.user_id);
-    if (!staffName) {
-      throw new Error("Staff name not found.");
-    }
-    query = query.eq("book_teacher", staffName);
-  }
-
-  const { error } = await query;
 
   if (error) {
     throw new Error(error.message);
@@ -146,23 +107,78 @@ export async function updateBookingApproval(
       .eq("id", id)
       .maybeSingle();
 
-    if (booking?.email && booking.email !== WALK_IN_EMAIL) {
-      const statusLabel = status === "approved" ? "Approved" : "Rejected";
-      await sendEmail({
-        to: booking.email,
-        subject: `Your Visit Booking has been ${statusLabel}`,
-        html: `
-          <h2>Booking ${statusLabel}</h2>
-          <p>Dear ${booking.full_name},</p>
-          <p>Your visit booking has been <strong>${statusLabel.toUpperCase()}</strong>.</p>
-          <table>
-            <tr><td><strong>Status:</strong></td><td>${statusLabel}</td></tr>
-            <tr><td><strong>Date:</strong></td><td>${booking.visit_date}</td></tr>
-            <tr><td><strong>Time:</strong></td><td>${booking.start_time} - ${booking.end_time}</td></tr>
-            ${booking.book_teacher ? `<tr><td><strong>Teacher:</strong></td><td>${booking.book_teacher}</td></tr>` : ""}
-          </table>
-        `,
-      })
+    if (!booking) return;
+
+    const teacherName = booking.book_teacher;
+
+    if (status === "approved") {
+      // Notify visitor
+      if (booking.email && booking.email !== WALK_IN_EMAIL) {
+        await sendEmail({
+          to: booking.email,
+          subject: "Your Visit Booking has been Approved",
+          html: `
+            <h2>Booking Approved</h2>
+            <p>Dear ${booking.full_name},</p>
+            <p>Your visit booking has been <strong>APPROVED</strong>.</p>
+            <p>Please visit the <strong>school administration lobby/room</strong> to meet with ${teacherName || "the teacher"} at the scheduled time.</p>
+            <table>
+              <tr><td><strong>Date:</strong></td><td>${booking.visit_date}</td></tr>
+              <tr><td><strong>Time:</strong></td><td>${booking.start_time} - ${booking.end_time}</td></tr>
+              ${teacherName ? `<tr><td><strong>Teacher:</strong></td><td>${teacherName}</td></tr>` : ""}
+            </table>
+            <p>Thank you.</p>
+          `,
+        })
+      }
+
+      // Notify teacher
+      if (teacherName) {
+        const { data: teacher } = await supabase
+          .from("system_user")
+          .select("email")
+          .eq("full_name", teacherName)
+          .maybeSingle();
+
+        if (teacher?.email) {
+          await sendEmail({
+            to: teacher.email,
+            subject: "Appointment Approved – Visitor Scheduled to Meet You",
+            html: `
+              <h2>Appointment Approved</h2>
+              <p>Dear ${teacherName},</p>
+              <p>A visitor has an approved appointment to meet with you.</p>
+              <p>Please <strong>receive them at the school administration lobby/room</strong> at the scheduled time.</p>
+              <table>
+                <tr><td><strong>Visitor:</strong></td><td>${booking.full_name}</td></tr>
+                <tr><td><strong>Date:</strong></td><td>${booking.visit_date}</td></tr>
+                <tr><td><strong>Time:</strong></td><td>${booking.start_time} - ${booking.end_time}</td></tr>
+                ${booking.dial_code && booking.phone_number ? `<tr><td><strong>Phone:</strong></td><td>${booking.dial_code} ${booking.phone_number}</td></tr>` : ""}
+              </table>
+            `,
+          })
+        }
+      }
+    } else if (status === "rejected") {
+      // Notify visitor about rejection
+      if (booking.email && booking.email !== WALK_IN_EMAIL) {
+        await sendEmail({
+          to: booking.email,
+          subject: "Your Visit Booking has been Rejected",
+          html: `
+            <h2>Booking Rejected</h2>
+            <p>Dear ${booking.full_name},</p>
+            <p>Your visit booking has been <strong>REJECTED</strong>.</p>
+            ${teacherName ? `<p>You had requested to meet with <strong>${teacherName}</strong>.</p>` : ""}
+            <table>
+              <tr><td><strong>Date:</strong></td><td>${booking.visit_date}</td></tr>
+              <tr><td><strong>Time:</strong></td><td>${booking.start_time} - ${booking.end_time}</td></tr>
+            </table>
+            <p>Please book another appointment at your convenience.</p>
+            <p>We apologise for any inconvenience.</p>
+          `,
+        })
+      }
     }
   } catch (emailErr) {
     console.error("Failed to send approval email:", emailErr)
@@ -173,25 +189,13 @@ export async function updateBookingVisitStatus(
   id: number,
   value: boolean
 ): Promise<void> {
-  const context = await assertApprovalsAccess();
+  await assertApprovalsAccess();
   const supabase = await getSupabaseClient();
 
-  let query = supabase
+  const { error } = await supabase
     .from("bookings")
     .update({ status: value })
     .eq("id", id);
-
-  if (context.role === SECURITY_ROLE) {
-    query = query.eq("email", context.email);
-  } else if (context.role === STAFF_ROLE) {
-    const staffName = await getStaffName(supabase, context.user_id);
-    if (!staffName) {
-      throw new Error("Staff name not found.");
-    }
-    query = query.eq("book_teacher", staffName);
-  }
-
-  const { error } = await query;
 
   if (error) {
     throw new Error(error.message);
@@ -204,20 +208,12 @@ export async function cancelBookingApproval(
   const context = await assertApprovalsAccess();
   const supabase = await getSupabaseClient();
 
-  let query = supabase
+  const { data: booking, error: updateError } = await supabase
     .from("bookings")
     .update({ book_status: "pending" })
-    .eq("id", id);
-
-  if (context.role === STAFF_ROLE) {
-    const staffName = await getStaffName(supabase, context.user_id);
-    if (!staffName) {
-      throw new Error("Staff name not found.");
-    }
-    query = query.eq("book_teacher", staffName);
-  }
-
-  const { data: booking, error: updateError } = await query.select().maybeSingle();
+    .eq("id", id)
+    .select()
+    .maybeSingle();
 
   if (updateError) {
     throw new Error(updateError.message);
@@ -228,8 +224,7 @@ export async function cancelBookingApproval(
   }
 
   try {
-    const staffName = await getStaffName(supabase, context.user_id);
-    const staffEmail = context.email;
+    const adminEmail = context.email;
 
     if (booking.email && booking.email !== WALK_IN_EMAIL) {
       await sendEmail({
@@ -250,14 +245,13 @@ export async function cancelBookingApproval(
       });
     }
 
-    if (staffEmail) {
+    if (adminEmail) {
       const visitorPhone = booking.dial_code && booking.phone_number ? `${booking.dial_code} ${booking.phone_number}` : "No phone number";
       await sendEmail({
-        to: staffEmail,
+        to: adminEmail,
         subject: "Booking Cancellation – Please Contact Visitor",
         html: `
           <h2>Booking Cancelled – Action Required</h2>
-          <p>Dear ${staffName || "Staff"},</p>
           <p>You cancelled a booking for <strong>${booking.full_name}</strong>.</p>
           <p>Please contact the visitor to inform them about the cancellation:</p>
           <table>

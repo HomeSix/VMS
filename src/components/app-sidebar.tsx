@@ -49,6 +49,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
 };
 
 const SECURITY_ROLE = "security";
+const SUPERADMIN_ROLE = "superadmin";
 const SECURITY_ALLOWED_PATHS = ["/cms/dashboard", "/cms/approvals"];
 
 const menuItemsData = menuItems.map((item: any) => ({
@@ -146,7 +147,7 @@ export function AppSidebar({ userRole }: { userRole?: string }) {
       return null;
     }
 
-    if (item.href === "/cms/availability" && userRole !== "admin") {
+    if (item.href === "/cms/availability" && userRole !== "admin" && userRole !== SUPERADMIN_ROLE) {
       return null;
     }
 

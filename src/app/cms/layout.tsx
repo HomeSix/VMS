@@ -12,6 +12,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { createClient } from "@/lib/client";
 
 const ADMIN_ROLE = "admin";
+const SUPERADMIN_ROLE = "superadmin";
 const APPROVED_STATUS = "approved";
 const PENDING_STATUS = "pending";
 
@@ -143,7 +144,7 @@ export default function CmsLayout({
     return () => clearInterval(interval);
   }, [supabase, userRole]);
 
-  const isAdmin = userRole === ADMIN_ROLE;
+  const isAdmin = userRole === ADMIN_ROLE || userRole === SUPERADMIN_ROLE;
   const isApproved = isAdmin || userStatus === APPROVED_STATUS;
   const isDashboard = pathname === "/cms/dashboard";
   const isPermissions = pathname === "/cms/permissions";

@@ -62,6 +62,7 @@ import { StatCard } from "@/components/ui/stat-card";
 import { Shield, Users, FileLock, Plus, Pencil, Trash2 } from "lucide-react";
 
 const ADMIN_ROLE = "admin";
+const SUPERADMIN_ROLE = "superadmin";
 const EXCLUDED_ROLES = ["admin", "pending", "rejected"];
 const PENDING_STATUS = false;
 const APPROVED_STATUS = true;
@@ -91,7 +92,7 @@ export default function PermissionsPage() {
 
   useEffect(() => {
     if (loading) return;
-    if (context && context.role !== ADMIN_ROLE) {
+    if (context && context.role !== ADMIN_ROLE && context.role !== SUPERADMIN_ROLE) {
       router.replace("/cms/dashboard");
     }
   }, [loading, context, router]);
@@ -112,7 +113,7 @@ export default function PermissionsPage() {
   );
 }
 
-  if (!context || context.role !== ADMIN_ROLE) {
+  if (!context || (context.role !== ADMIN_ROLE && context.role !== SUPERADMIN_ROLE)) {
     return null;
   }
 
@@ -146,15 +147,15 @@ export default function PermissionsPage() {
         </TabsList>
 
         <TabsContent value="staff" className="mt-4">
-          <StaffAccessTab onError={setError} />
+          <StaffAccessTab onError={setError} isSuperadmin={context.role === SUPERADMIN_ROLE} />
         </TabsContent>
 
         <TabsContent value="roles" className="mt-4">
-          <RolesTab onError={setError} />
+          <RolesTab onError={setError} isSuperadmin={context.role === SUPERADMIN_ROLE} />
         </TabsContent>
 
         <TabsContent value="pages" className="mt-4">
-          <PagePermissionsTab onError={setError} />
+          <PagePermissionsTab onError={setError} isSuperadmin={context.role === SUPERADMIN_ROLE} />
         </TabsContent>
       </Tabs>
     </div>
@@ -163,7 +164,7 @@ export default function PermissionsPage() {
 
 // ─── Staff Access Tab ─────────────────────────────────────────────────────────
 
-function StaffAccessTab({ onError }: { onError: (msg: string | null) => void }) {
+function StaffAccessTab({ onError, isSuperadmin }: { onError: (msg: string | null) => void; isSuperadmin: boolean }) {
   const [rows, setRows] = useState<StaffRecord[]>([]);
   const [search, setSearch] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -175,8 +176,8 @@ function StaffAccessTab({ onError }: { onError: (msg: string | null) => void }) 
   const filteredRows = useMemo(() => {
     const term = search.trim().toLowerCase();
     const filtered = rows.filter((row) => {
-      // Exclude admin users from the list
-      if (row.role_name === ADMIN_ROLE) return false;
+      // Only superadmin can see and manage admin users
+      if (row.role_name === ADMIN_ROLE && !isSuperadmin) return false;
       
       if (!term) return true;
       const name = row.full_name?.toLowerCase() ?? "";
@@ -357,7 +358,7 @@ function StaffAccessTab({ onError }: { onError: (msg: string | null) => void }) 
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="none">No role</SelectItem>
-                            {roles.filter((r) => !EXCLUDED_ROLES.includes(r.name)).map((r) => (
+                            {roles.filter((r) => !EXCLUDED_ROLES.includes(r.name) || (isSuperadmin && r.name === ADMIN_ROLE)).map((r) => (
                               <SelectItem key={r.id} value={r.id}>
                                 {r.name}
                               </SelectItem>
@@ -444,7 +445,7 @@ function StaffAccessTab({ onError }: { onError: (msg: string | null) => void }) 
 
 // ─── Roles Tab ────────────────────────────────────────────────────────────────
 
-function RolesTab({ onError }: { onError: (msg: string | null) => void }) {
+function RolesTab({ onError, isSuperadmin }: { onError: (msg: string | null) => void; isSuperadmin: boolean }) {
   const [roles, setRoles] = useState<RoleRecord[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingRole, setEditingRole] = useState<RoleRecord | null>(null);
@@ -458,8 +459,8 @@ function RolesTab({ onError }: { onError: (msg: string | null) => void }) {
     onError(null);
     try {
       const data = await fetchRoles();
-      // Filter out admin role to prevent accidental modification
-      const filteredRoles = data.filter(role => role.name !== ADMIN_ROLE);
+      // Only superadmin can manage admin role
+      const filteredRoles = isSuperadmin ? data : data.filter(role => role.name !== ADMIN_ROLE);
       setRoles(filteredRoles);
     } catch (err) {
       onError(err instanceof Error ? err.message : "Failed to fetch roles");
@@ -625,7 +626,7 @@ function RolesTab({ onError }: { onError: (msg: string | null) => void }) {
 
 // ─── Page Permissions Tab ─────────────────────────────────────────────────────
 
-function PagePermissionsTab({ onError }: { onError: (msg: string | null) => void }) {
+function PagePermissionsTab({ onError, isSuperadmin }: { onError: (msg: string | null) => void; isSuperadmin: boolean }) {
   const [roles, setRoles] = useState<RoleRecord[]>([]);
   const [selectedRoleId, setSelectedRoleId] = useState<string>("");
   const [perms, setPerms] = useState<RolePermissionRecord[]>([]);
@@ -637,8 +638,8 @@ function PagePermissionsTab({ onError }: { onError: (msg: string | null) => void
     onError(null);
     try {
       const data = await fetchRoles();
-      // Filter out admin role to prevent configuration of admin permissions
-      const filteredRoles = data.filter(role => !EXCLUDED_ROLES.includes(role.name));
+      // Only superadmin can configure admin role permissions
+      const filteredRoles = isSuperadmin ? data : data.filter(role => !EXCLUDED_ROLES.includes(role.name));
       setRoles(filteredRoles);
       if (filteredRoles.length > 0 && !selectedRoleId) {
         setSelectedRoleId(filteredRoles[0].id);

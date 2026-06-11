@@ -41,6 +41,7 @@ const KpiTrendsChart = dynamic(() => import("@/components/kpi-trends-chart").the
 });
 
 const ADMIN_ROLE = "admin";
+const SUPERADMIN_ROLE = "superadmin";
 const STAFF_ROLE = "staff";
 const SECURITY_ROLE = "security";
 const APPROVED_STATUS = true;
@@ -146,7 +147,7 @@ export default function DashboardPage() {
   }, []);
 
   const loadAvailability = useCallback(async () => {
-    if (!context || context.role === ADMIN_ROLE) return;
+    if (!context || context.role === ADMIN_ROLE || context.role === SUPERADMIN_ROLE) return;
     setAvailabilityLoading(true);
     setAvailabilityError(null);
     setAvailabilitySuccess(null);
@@ -168,12 +169,16 @@ export default function DashboardPage() {
       .eq("user_id", user.id)
       .eq("available_date", availabilityDate);
 
-    const slots = (slotRows ?? [])
+    const availableSlots = (slotRows ?? [])
       .map((row: any) => String(row.slot_time ?? "").slice(0, 5))
       .filter((slot) => slot.length === 5);
 
-    setAllDayAvailable(slots.length === 0);
-    setAvailabilitySlots(slots);
+    setAllDayAvailable(availableSlots.length === 0);
+    setAvailabilitySlots(
+      availableSlots.length > 0
+        ? TIME_SLOTS.filter((s) => !availableSlots.includes(s))
+        : []
+    );
     setAvailabilityLoading(false);
   }, [availabilityDate, context, supabase]);
 
@@ -229,7 +234,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!context) return;
-    const isAdminRole = context.role === ADMIN_ROLE;
+    const isAdminRole = context.role === ADMIN_ROLE || context.role === SUPERADMIN_ROLE;
     const isApprovedUser = isAdminRole || context.is_active === APPROVED_STATUS;
     if (!isApprovedUser) return;
 
@@ -257,7 +262,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!context) return;
-    const isAdminRole = context.role === ADMIN_ROLE;
+    const isAdminRole = context.role === ADMIN_ROLE || context.role === SUPERADMIN_ROLE;
     const isApprovedUser = isAdminRole || context.is_active === APPROVED_STATUS;
     if (!isApprovedUser) return;
 
@@ -285,7 +290,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!context) return;
-    const isAdminRole = context.role === ADMIN_ROLE;
+    const isAdminRole = context.role === ADMIN_ROLE || context.role === SUPERADMIN_ROLE;
     const isApprovedUser = isAdminRole || context.is_active === APPROVED_STATUS;
     if (!isApprovedUser) return;
 
@@ -342,7 +347,7 @@ export default function DashboardPage() {
     setAvailabilitySaving(false);
   }, [allDayAvailable, availabilityDate, availabilitySlots]);
 
-  const isAdmin = context?.role === ADMIN_ROLE;
+  const isAdmin = context?.role === ADMIN_ROLE || context?.role === SUPERADMIN_ROLE;
   const isStaff = context?.role === STAFF_ROLE;
   const isSecurity = context?.role === SECURITY_ROLE;
 
@@ -720,7 +725,7 @@ export default function DashboardPage() {
             <div className="h-1 w-10 rounded-full bg-amber-500/40 mb-1" />
             <CardTitle>My availability</CardTitle>
             <CardDescription>
-              Set the hours you can accept visitor appointments (08:00 - 16:30).
+              Mark times you are NOT available (08:00 - 16:30). All unmarked slots are available.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -731,9 +736,9 @@ export default function DashboardPage() {
                   onCheckedChange={handleAllDayChange}
                 />
                 <div>
-                  <p className="text-sm font-medium">Available all day</p>
+                  <p className="text-sm font-medium">No unavailable times</p>
                   <p className="text-xs text-muted-foreground">
-                    Turn off to pick specific time slots.
+                    Turn off to mark specific slots as unavailable.
                   </p>
                 </div>
               </div>
@@ -754,20 +759,20 @@ export default function DashboardPage() {
             {!allDayAvailable && (
               <div className="space-y-3">
                 <p className="text-xs text-muted-foreground">
-                  Select the 30-minute slots you are available for.
+                  Click a time slot to mark it as <span className="text-destructive font-medium">unavailable</span>.
                 </p>
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-6">
                   {TIME_SLOTS.map((slot) => {
-                    const isSelected = availabilitySlots.includes(slot);
+                    const isUnavailable = availabilitySlots.includes(slot);
                     return (
                       <button
                         key={slot}
                         type="button"
                         onClick={() => toggleSlot(slot)}
                         className={`h-9 rounded-md border text-xs font-medium transition-colors ${
-                          isSelected
-                            ? "border-foreground bg-foreground text-background"
-                            : "border-input hover:bg-accent"
+                          isUnavailable
+                            ? "border-destructive bg-destructive/10 text-destructive"
+                            : "border-emerald-500/30 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
                         }`}
                       >
                         {slot}
@@ -777,7 +782,12 @@ export default function DashboardPage() {
                 </div>
                 {availabilitySlots.length === 0 && (
                   <p className="text-xs text-muted-foreground">
-                    No slots selected yet.
+                    No unavailable slots — you're available all day.
+                  </p>
+                )}
+                {availabilitySlots.length > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    Unavailable: {availabilitySlots.join(", ")}
                   </p>
                 )}
               </div>

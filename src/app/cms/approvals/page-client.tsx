@@ -45,6 +45,7 @@ import { loadContext, type ContextData } from "../permissions/actions";
 import { ChevronDownIcon, ChevronUpIcon } from "lucide-react";
 
 const ADMIN_ROLE = "admin";
+const SUPERADMIN_ROLE = "superadmin";
 const SECURITY_ROLE = "security";
 const STAFF_ROLE = "staff";
 
@@ -129,6 +130,7 @@ export default function BookingApprovalsPage() {
   const [dateOpen, setDateOpen] = useState(false);
   const [date, setDate] = useState<Date | undefined>(undefined);
   const [walkInOnly, setWalkInOnly] = useState(false);
+  const [rejectTarget, setRejectTarget] = useState<BookingApprovalRecord | null>(null);
   const router = useRouter();
   const dateValue = date ? toDateKey(date) : "";
 
@@ -155,7 +157,7 @@ export default function BookingApprovalsPage() {
 
   useEffect(() => {
     if (contextLoading) return;
-    if (!context || (context.role !== ADMIN_ROLE && context.role !== SECURITY_ROLE && context.role !== STAFF_ROLE)) {
+    if (!context || (context.role !== ADMIN_ROLE && context.role !== SUPERADMIN_ROLE)) {
       router.replace("/cms/dashboard");
     }
   }, [contextLoading, context, router]);
@@ -174,7 +176,7 @@ export default function BookingApprovalsPage() {
   }, [dateValue, walkInOnly]);
 
   useEffect(() => {
-    if (!context || (context.role !== ADMIN_ROLE && context.role !== SECURITY_ROLE && context.role !== STAFF_ROLE)) return;
+    if (!context || (context.role !== ADMIN_ROLE && context.role !== SUPERADMIN_ROLE)) return;
     void loadBookings();
   }, [context, loadBookings]);
 
@@ -294,18 +296,12 @@ export default function BookingApprovalsPage() {
     );
   }
 
-  if (!context || (context.role !== ADMIN_ROLE && context.role !== SECURITY_ROLE && context.role !== STAFF_ROLE)) {
+  if (!context || (context.role !== ADMIN_ROLE && context.role !== SUPERADMIN_ROLE)) {
     return null;
   }
 
-  const isSecurity = context.role === SECURITY_ROLE;
-  const isStaff = context.role === STAFF_ROLE;
-  const headerDescription = isSecurity
-    ? "Review bookings assigned to your security account."
-    : isStaff
-      ? "Review pending bookings from visitors who want to meet you."
-      : "Review pending bookings and decide whether to approve or reject them.";
-  const tableTitle = isSecurity ? "Assigned bookings" : "Pending bookings";
+  const headerDescription = "Review pending bookings and decide whether to approve or reject them.";
+  const tableTitle = "Pending bookings";
 
   return (
     <div className="space-y-6">
@@ -317,55 +313,53 @@ export default function BookingApprovalsPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {isSecurity && (
-            <div className="flex items-center gap-2 text-sm">
-              <FieldLabel
-                htmlFor="approvals-date"
-                className="text-xs font-medium uppercase tracking-wider text-muted-foreground"
-              >
-                Date
-              </FieldLabel>
-              <Popover open={dateOpen} onOpenChange={setDateOpen}>
-                <PopoverTrigger
-                  render={
-                    <Button
-                      variant="outline"
-                      id="approvals-date"
-                      className="w-60 justify-between font-normal"
-                    >
-                      {date ? formatDateForDisplay(date) : "Select date"}
-                      <ChevronDownIcon data-icon="inline-end" />
-                    </Button>
-                  }
-                />
-                <PopoverContent className="w-auto overflow-hidden p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={date}
-                    captionLayout="dropdown"
-                    defaultMonth={date}
-                    onSelect={(nextDate) => {
-                      setDate(nextDate);
-                      setDateOpen(false);
-                    }}
-                  />
-                </PopoverContent>
-              </Popover>
-              {date && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setDate(undefined);
+          <div className="flex items-center gap-2 text-sm">
+            <FieldLabel
+              htmlFor="approvals-date"
+              className="text-xs font-medium uppercase tracking-wider text-muted-foreground"
+            >
+              Date
+            </FieldLabel>
+            <Popover open={dateOpen} onOpenChange={setDateOpen}>
+              <PopoverTrigger
+                render={
+                  <Button
+                    variant="outline"
+                    id="approvals-date"
+                    className="w-60 justify-between font-normal"
+                  >
+                    {date ? formatDateForDisplay(date) : "Select date"}
+                    <ChevronDownIcon data-icon="inline-end" />
+                  </Button>
+                }
+              />
+              <PopoverContent className="w-auto overflow-hidden p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={date}
+                  captionLayout="dropdown"
+                  defaultMonth={date}
+                  onSelect={(nextDate) => {
+                    setDate(nextDate);
                     setDateOpen(false);
                   }}
-                  aria-label="Display all appointments"
-                >
-                  Display All
-                </Button>
-              )}
-            </div>
-          )}
+                />
+              </PopoverContent>
+            </Popover>
+            {date && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setDate(undefined);
+                  setDateOpen(false);
+                }}
+                aria-label="Display all appointments"
+              >
+                Display All
+              </Button>
+            )}
+          </div>
           <Button variant="outline" size="sm" onClick={loadBookings} disabled={loading}>
             Refresh
           </Button>
@@ -384,19 +378,17 @@ export default function BookingApprovalsPage() {
           </CardDescription>
           <CardAction>
             <div className="flex items-center gap-3">
-              {isSecurity && (
-                <div className="flex items-center gap-2">
-                  <Label htmlFor="walk-in-only" className="text-xs">
-                    Walk-In only
-                  </Label>
-                  <Switch
-                    id="walk-in-only"
-                    checked={walkInOnly}
-                    onCheckedChange={setWalkInOnly}
-                    disabled={loading}
-                  />
-                </div>
-              )}
+              <div className="flex items-center gap-2">
+                <Label htmlFor="walk-in-only" className="text-xs">
+                  Walk-In only
+                </Label>
+                <Switch
+                  id="walk-in-only"
+                  checked={walkInOnly}
+                  onCheckedChange={setWalkInOnly}
+                  disabled={loading}
+                />
+              </div>
               <Button
                 variant="outline"
                 size="icon-sm"
@@ -422,6 +414,7 @@ export default function BookingApprovalsPage() {
                   <TableHead>Visit date</TableHead>
                   <TableHead>Time</TableHead>
                   <TableHead>Purpose</TableHead>
+                  <TableHead>Teacher</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Action</TableHead>
                 </TableRow>
@@ -430,7 +423,7 @@ export default function BookingApprovalsPage() {
                 {loading ? (
                   <TableRow>
                     <TableCell
-                      colSpan={6}
+                      colSpan={7}
                       className="py-8 text-center text-sm text-muted-foreground"
                     >
                       Loading bookings...
@@ -439,7 +432,7 @@ export default function BookingApprovalsPage() {
                 ) : sortedBookings.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={6}
+                      colSpan={7}
                       className="py-8 text-center text-sm text-muted-foreground"
                     >
                       No bookings found.
@@ -450,13 +443,9 @@ export default function BookingApprovalsPage() {
                     const approvalStatus = getApprovalStatus(booking.book_status);
                     const isPending =
                       booking.book_status == null || booking.book_status === "pending";
-                    const isWalkIn = booking.email === "security@example.com";
-                    const canApprove = isPending && isWalkIn;
-                    const canReject = isPending && isWalkIn;
-                    const canCheckOut =
-                      booking.book_status === "approved" && booking.status !== true && isWalkIn;
-                    const canCancel =
-                      booking.book_status === "approved" && isWalkIn;
+                    const isAdmin = context?.role === ADMIN_ROLE || context?.role === SUPERADMIN_ROLE;
+                    const canApprove = isPending && isAdmin;
+                    const canReject = isPending && isAdmin;
                     return (
                       <TableRow key={booking.id ?? booking.created_at ?? booking.full_name}>
                         <TableCell className="font-medium">
@@ -467,6 +456,7 @@ export default function BookingApprovalsPage() {
                           {formatTime(booking.start_time)} - {formatTime(booking.end_time)}
                         </TableCell>
                         <TableCell>{booking.visit_reason ?? "-"}</TableCell>
+                        <TableCell>{booking.book_teacher ?? "-"}</TableCell>
                         <TableCell>
                           <Badge
                             variant="outline"
@@ -487,34 +477,64 @@ export default function BookingApprovalsPage() {
                               </Button>
                             ) : null}
                             {canReject ? (
-                              <Button
-                                size="sm"
-                                variant="destructive"
-                                onClick={() => handleDecision(booking, "rejected")}
-                                disabled={booking.id == null || busyId === booking.id}
-                              >
-                                Reject
-                              </Button>
-                            ) : null}
-                            {canCheckOut ? (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleCheckOut(booking)}
-                                disabled={booking.id == null || busyId === booking.id}
-                              >
-                                Check out
-                              </Button>
-                            ) : null}
-                            {canCancel ? (
-                              <Button
-                                size="sm"
-                                variant="destructive"
-                                onClick={() => handleCancel(booking)}
-                                disabled={booking.id == null || busyId === booking.id}
-                              >
-                                Cancel
-                              </Button>
+                              <Dialog open={rejectTarget?.id === booking.id} onOpenChange={(open) => { if (!open) setRejectTarget(null); }}>
+                                <DialogTrigger
+                                  render={
+                                    <Button
+                                      size="sm"
+                                      variant="destructive"
+                                      onClick={() => setRejectTarget(booking)}
+                                      disabled={booking.id == null || busyId === booking.id}
+                                    >
+                                      Reject
+                                    </Button>
+                                  }
+                                />
+                                <DialogContent className="max-w-md">
+                                  <DialogHeader>
+                                    <DialogTitle>Confirm Rejection</DialogTitle>
+                                  </DialogHeader>
+                                  <div className="space-y-4">
+                                    <p className="text-sm text-muted-foreground">
+                                      Are you sure you want to reject this booking?
+                                    </p>
+                                    <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
+                                      <div className="flex justify-between">
+                                        <span className="text-xs text-muted-foreground">Visitor</span>
+                                        <span className="text-sm font-medium">{booking.full_name ?? "-"}</span>
+                                      </div>
+                                      <div className="flex justify-between">
+                                        <span className="text-xs text-muted-foreground">Date</span>
+                                        <span className="text-sm">{formatDate(booking.visit_date)}</span>
+                                      </div>
+                                      <div className="flex justify-between">
+                                        <span className="text-xs text-muted-foreground">Time</span>
+                                        <span className="text-sm">{formatTime(booking.start_time)} - {formatTime(booking.end_time)}</span>
+                                      </div>
+                                      <div className="flex justify-between">
+                                        <span className="text-xs text-muted-foreground">Teacher</span>
+                                        <span className="text-sm">{booking.book_teacher ?? "-"}</span>
+                                      </div>
+                                    </div>
+                                    <div className="flex justify-end gap-2">
+                                      <Button variant="outline" size="sm" onClick={() => setRejectTarget(null)}>
+                                        Cancel
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="destructive"
+                                        onClick={() => {
+                                          handleDecision(booking, "rejected");
+                                          setRejectTarget(null);
+                                        }}
+                                        disabled={busyId === booking.id}
+                                      >
+                                        {busyId === booking.id ? "Rejecting..." : "Confirm Reject"}
+                                      </Button>
+                                    </div>
+                                  </div>
+                                </DialogContent>
+                              </Dialog>
                             ) : null}
                             <Dialog>
                               <DialogTrigger

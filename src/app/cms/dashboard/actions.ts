@@ -194,7 +194,21 @@ export async function saveAvailability(formData: {
   }
 
   if (!formData.allDayAvailable && formData.slots.length > 0) {
-    const payload: AvailabilitySlot[] = formData.slots.map((slot) => ({
+    const OPEN_START = 8 * 60;
+    const OPEN_END = 16 * 60 + 30;
+    const SLOT_STEP = 30;
+    const allSlots = Array.from(
+      { length: Math.ceil((OPEN_END - OPEN_START) / SLOT_STEP) },
+      (_, index) => {
+        const minutes = OPEN_START + index * SLOT_STEP;
+        const h = Math.floor(minutes / 60).toString().padStart(2, "0");
+        const m = Math.floor(minutes % 60).toString().padStart(2, "0");
+        return `${h}:${m}`;
+      }
+    );
+    const availableSlots = allSlots.filter((s) => !formData.slots.includes(s));
+
+    const payload: AvailabilitySlot[] = availableSlots.map((slot) => ({
       user_id: user.id,
       available_date: formData.availabilityDate,
       slot_time: slot,
