@@ -1,13 +1,11 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { isElevated, isSecurityRole, isStaffRole } from "@/lib/roles";
 
 export const config = {
   matcher: ["/cms/:path*"],
 };
 
-const ADMIN_ROLE = "admin";
-const SECURITY_ROLE = "security";
-const STAFF_ROLE = "staff";
 const APPROVED_STATUS = true;
 
 // Normalize paths for consistent comparison
@@ -82,9 +80,7 @@ export async function middleware(request: NextRequest) {
   const isPermissions = pathname === "/cms/permissions";
   const isDenied = pathname === "/cms/denied";
   const isApprovals = pathname === "/cms/approvals";
-  const isAdmin = roleName === ADMIN_ROLE;
-  const isSecurity = roleName === SECURITY_ROLE;
-  const isStaff = roleName === STAFF_ROLE;
+  const isAdmin = isElevated(roleName);
   const isApproved = isAdmin || userRoleData?.is_active === APPROVED_STATUS;
 
   // Always allow the denied page
@@ -152,7 +148,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // No explicit permission — fall back to role-based defaults
-  if (isStaff || isSecurity) {
+  if (isStaffRole(roleName) || isSecurityRole(roleName)) {
     if (isDashboard || isApprovals) return NextResponse.next();
     const url = request.nextUrl.clone();
     url.pathname = "/cms/denied";

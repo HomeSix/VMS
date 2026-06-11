@@ -53,21 +53,8 @@
 	 */
 	"vars": {
 		"NEXT_PUBLIC_SUPABASE_URL": "https://vlmeyneofiyulqymljyp.supabase.co",
-		"NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_n97HJKgNjApgv2iv6iM_Lw_fqLcj5Dh",
-		"SMTP_HOST": "smtp.gmail.com",
-		"SMTP_PORT": "587",
-		"SMTP_SECURE": "false",
-		"SMTP_USER": "noresponsetelokparityaani@gmail.com",
-		"SMTP_PASS": "jtgr uteh ymvl uxdo",
-		"SMTP_FROM": "noresponsetelokparityaani@gmail.com",
-		"SMTP_FROM_NAME": "VMS"
+		"NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_n97HJKgNjApgv2iv6iM_Lw_fqLcj5Dh"
 	},
-	/**
-	 * SMTP Secrets (set via `wrangler secret put`):
-	 * - SMTP_USER     (your Gmail address)
-	 * - SMTP_PASS     (your Gmail App Password)
-	 * - SMTP_FROM     (sender email address)
-	 */
 	/**
 	 * Secrets
 	 * https://developers.cloudflare.com/workers/configuration/secrets/

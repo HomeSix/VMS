@@ -35,6 +35,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useRouter, usePathname } from "next/navigation";
 import { createClient } from "@/lib/client";
+import { ROLES, isElevated } from "@/lib/roles";
 import { useEffect, useMemo, useState } from "react";
 import menuItems from "@/data/menu-items.json";
 
@@ -48,9 +49,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   HelpCircle,
 };
 
-const SECURITY_ROLE = "security";
-const SUPERADMIN_ROLE = "superadmin";
-const SECURITY_ALLOWED_PATHS = ["/cms/dashboard", "/cms/approvals"];
+
 
 const menuItemsData = menuItems.map((item: any) => ({
   ...item,
@@ -67,20 +66,29 @@ export function AppSidebar({ userRole }: { userRole?: string }) {
   const router = useRouter();
   const pathname = usePathname();
   const supabase = useMemo(() => createClient(), []);
-  const [canAccessPermissions, setCanAccessPermissions] = useState(false);
+  const [dynamicPaths, setDynamicPaths] = useState<Set<string> | null>(null);
 
-  
+  // Elevated roles (admin/superadmin) get all paths SYNCHRONOUSLY during render
+  const allowedPaths = useMemo(() => {
+    if (isElevated(userRole)) {
+      return new Set(menuItemsData.map((item: any) => item.href).filter(Boolean));
+    }
+    return dynamicPaths ?? new Set(["/cms/dashboard"]);
+  }, [userRole, dynamicPaths]);
+
+  // For non-elevated roles, fetch permissions from DB
   useEffect(() => {
-    const checkPermissions = async () => {
-      if (!userRole || userRole === "pending") {
-        setCanAccessPermissions(false);
+    if (isElevated(userRole)) return;
+
+    const loadPermissions = async () => {
+      if (!userRole || userRole === ROLES.PENDING) {
+        // Leave dynamicPaths as null so fallback (dashboard only) applies
         return;
       }
 
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
-          setCanAccessPermissions(false);
           return;
         }
 
@@ -91,32 +99,33 @@ export function AppSidebar({ userRole }: { userRole?: string }) {
           .maybeSingle();
 
         if (!userData?.role_id) {
-          setCanAccessPermissions(false);
           return;
         }
 
-        // Admin always has access
-        if (userRole === "admin") {
-          setCanAccessPermissions(true);
-          return;
-        }
-
-        // Check role permissions for /cms/permissions
-        const { data: perm } = await supabase
+        const { data: perms } = await supabase
           .from("role_permissions")
-          .select("can_access")
-          .eq("role_id", userData.role_id)
-          .eq("page_path", "/cms/permissions")
-          .maybeSingle();
+          .select("page_path, can_access")
+          .eq("role_id", userData.role_id);
 
-        setCanAccessPermissions(perm?.can_access || false);
+        const accessible = new Set<string>(["/cms/dashboard"]);
+        const permMap = new Map<string, boolean>();
+        for (const p of perms ?? []) {
+          permMap.set(p.page_path, p.can_access);
+        }
+        for (const item of menuItemsData) {
+          if (item.href && permMap.get(item.href) === true) {
+            accessible.add(item.href);
+          }
+        }
+
+        setDynamicPaths(accessible);
       } catch (error) {
         console.error("Error checking permissions:", error);
-        setCanAccessPermissions(false);
+        setDynamicPaths(new Set(["/cms/dashboard"]));
       }
     };
 
-    checkPermissions();
+    loadPermissions();
   }, [userRole, supabase]);
 
   const handleLogout = async () => {
@@ -136,22 +145,7 @@ export function AppSidebar({ userRole }: { userRole?: string }) {
   const renderMenuItem = (item: any, index: number) => {
     const isActive = item.href ? pathname === item.href : false;
 
-    if (userRole === SECURITY_ROLE) {
-      if (!item.href || !SECURITY_ALLOWED_PATHS.includes(item.href)) {
-        return null;
-      }
-    }
-    
-    // Hide permissions link if user doesn't have access
-    if (item.href === "/cms/permissions" && !canAccessPermissions) {
-      return null;
-    }
-
-    if (item.href === "/cms/availability" && userRole !== "admin" && userRole !== SUPERADMIN_ROLE) {
-      return null;
-    }
-
-    if (item.href === "/cms/approvals" && !userRole) {
+    if (item.href && !allowedPaths.has(item.href)) {
       return null;
     }
 

@@ -3,7 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Bell, HelpCircle, Settings, Clock, CheckCircle, XCircle } from "lucide-react";
+import { ROLES, isElevated, isStaffRole, isSecurityRole } from "@/lib/roles";
 
+import { ErrorBoundary } from "@/components/error-boundary";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { Button } from "@/components/ui/button";
@@ -11,8 +13,6 @@ import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { createClient } from "@/lib/client";
 
-const ADMIN_ROLE = "admin";
-const SUPERADMIN_ROLE = "superadmin";
 const APPROVED_STATUS = "approved";
 const PENDING_STATUS = "pending";
 
@@ -101,7 +101,7 @@ export default function CmsLayout({
       if (!currentUser) return;
 
       let staffName = "";
-      if (userRole !== "admin") {
+      if (!isElevated(userRole)) {
         const { data: userData } = await supabase
           .from("system_user")
           .select("full_name")
@@ -121,10 +121,10 @@ export default function CmsLayout({
         .order("created_at", { ascending: false })
         .limit(10);
 
-      if (userRole === "staff" && staffName) {
+      if (isStaffRole(userRole) && staffName) {
         pendingQuery = pendingQuery.eq("book_teacher", staffName);
         notifQuery = notifQuery.eq("book_teacher", staffName);
-      } else if (userRole === "security") {
+      } else if (isSecurityRole(userRole)) {
         pendingQuery = pendingQuery.eq("email", currentUser.email);
         notifQuery = notifQuery.eq("email", currentUser.email);
       }
@@ -144,7 +144,7 @@ export default function CmsLayout({
     return () => clearInterval(interval);
   }, [supabase, userRole]);
 
-  const isAdmin = userRole === ADMIN_ROLE || userRole === SUPERADMIN_ROLE;
+  const isAdmin = isElevated(userRole);
   const isApproved = isAdmin || userStatus === APPROVED_STATUS;
   const isDashboard = pathname === "/cms/dashboard";
   const isPermissions = pathname === "/cms/permissions";
@@ -169,25 +169,21 @@ export default function CmsLayout({
             <div className="flex items-center justify-between gap-2 flex-wrap mb-6">
               <div className="flex items-center gap-2">
                 <SidebarTrigger />
-                {!loading && userRole && (
-                  <div
-                    className={`px-2 py-1 rounded-full text-xs font-semibold text-white ${
-                      userRole === "editor"
-                        ? "bg-orange-600"
-                        : userRole === "viewer"
-                          ? "bg-green-600"
-                          : userRole === "admin"
-                            ? "bg-yellow-600"
-                            : userRole === "staff"
-                              ? "bg-red-600"
-                              : userRole === "pending"
-                                ? "bg-slate-600"
-                                : "bg-gray-600"
-                    }`}
-                  >
-                    {userRole.toUpperCase()}
-                  </div>
-                )}
+                  {!loading && userRole && (
+                    <div
+                      className={`px-2 py-1 rounded-full text-xs font-semibold text-white ${
+                        isElevated(userRole)
+                          ? "bg-yellow-600"
+                          : isStaffRole(userRole)
+                            ? "bg-red-600"
+                            : isSecurityRole(userRole)
+                              ? "bg-blue-600"
+                              : "bg-gray-600"
+                      }`}
+                    >
+                      {userRole.toUpperCase()}
+                    </div>
+                  )}
               </div>
 
               <div className="flex items-center gap-1 sm:gap-2 ml-auto">
@@ -294,7 +290,9 @@ export default function CmsLayout({
                   <div className="w-6 h-6 rounded-full border-2 border-primary border-t-transparent animate-spin" />
                 </div>
               ) : canViewPage ? (
-                children
+                <ErrorBoundary>
+                  {children}
+                </ErrorBoundary>
               ) : null}
             </div>
 

@@ -2,6 +2,7 @@
 
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { ROLES, isElevated, isStaffRole, isSecurityRole } from "@/lib/roles";
 
 const PENDING_STATUS = false;
 const APPROVED_STATUS = true;
@@ -82,7 +83,7 @@ async function getPendingRoleId(
   const { data } = await supabase
     .from("roles")
     .select("id")
-    .eq("name", "pending")
+    .eq("name", ROLES.PENDING)
     .maybeSingle();
   return data?.id ?? "";
 }
@@ -464,7 +465,7 @@ export async function canAccessPage(
     roleName = roleInfo?.name ?? "";
   }
 
-  if (roleName === "admin" || roleName === "superadmin") {
+  if (isElevated(roleName)) {
     return { allowed: true, roleName };
   }
 

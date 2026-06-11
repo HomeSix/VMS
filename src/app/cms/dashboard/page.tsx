@@ -33,6 +33,7 @@ import {
   type SecurityScheduleHealth,
   type TrendSeries,
 } from "./actions";
+import { ROLES, isElevated, isStaffRole, isSecurityRole } from "@/lib/roles";
 import dynamic from "next/dynamic";
 
 const KpiTrendsChart = dynamic(() => import("@/components/kpi-trends-chart").then((m) => ({ default: m.KpiTrendsChart })), {
@@ -40,10 +41,6 @@ const KpiTrendsChart = dynamic(() => import("@/components/kpi-trends-chart").the
   loading: () => <div className="h-64 rounded-lg bg-muted animate-pulse" />,
 });
 
-const ADMIN_ROLE = "admin";
-const SUPERADMIN_ROLE = "superadmin";
-const STAFF_ROLE = "staff";
-const SECURITY_ROLE = "security";
 const APPROVED_STATUS = true;
 
 const OPEN_START = 8 * 60;
@@ -147,7 +144,7 @@ export default function DashboardPage() {
   }, []);
 
   const loadAvailability = useCallback(async () => {
-    if (!context || context.role === ADMIN_ROLE || context.role === SUPERADMIN_ROLE) return;
+    if (!context || isElevated(context.role)) return;
     setAvailabilityLoading(true);
     setAvailabilityError(null);
     setAvailabilitySuccess(null);
@@ -183,7 +180,7 @@ export default function DashboardPage() {
   }, [availabilityDate, context, supabase]);
 
   useEffect(() => {
-    if (!context || context.role === ADMIN_ROLE) return;
+    if (!context || isElevated(context.role)) return;
     void loadAvailability();
   }, [context, loadAvailability]);
 
@@ -202,7 +199,7 @@ export default function DashboardPage() {
       }
 
       let staffName = "";
-      if (context.role !== ADMIN_ROLE) {
+      if (!isElevated(context.role)) {
         const { data: userData } = await supabase
           .from("system_user")
           .select("full_name")
@@ -234,7 +231,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!context) return;
-    const isAdminRole = context.role === ADMIN_ROLE || context.role === SUPERADMIN_ROLE;
+    const isAdminRole = isElevated(context.role);
     const isApprovedUser = isAdminRole || context.is_active === APPROVED_STATUS;
     if (!isApprovedUser) return;
 
@@ -244,7 +241,7 @@ export default function DashboardPage() {
         if (isAdminRole) {
           const data = await fetchAdminSnapshot();
           setAdminSnapshot(data);
-        } else if (context.role === SECURITY_ROLE) {
+        } else if (isSecurityRole(context.role)) {
           const data = await fetchSecuritySnapshot();
           setSecuritySnapshot(data);
         } else {
@@ -262,7 +259,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!context) return;
-    const isAdminRole = context.role === ADMIN_ROLE || context.role === SUPERADMIN_ROLE;
+    const isAdminRole = isElevated(context.role);
     const isApprovedUser = isAdminRole || context.is_active === APPROVED_STATUS;
     if (!isApprovedUser) return;
 
@@ -272,7 +269,7 @@ export default function DashboardPage() {
         if (isAdminRole) {
           const data = await fetchAdminScheduleHealth();
           setAdminHealth(data);
-        } else if (context.role === SECURITY_ROLE) {
+        } else if (isSecurityRole(context.role)) {
           const data = await fetchSecurityScheduleHealth();
           setSecurityHealth(data);
         } else {
@@ -290,7 +287,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!context) return;
-    const isAdminRole = context.role === ADMIN_ROLE || context.role === SUPERADMIN_ROLE;
+    const isAdminRole = isElevated(context.role);
     const isApprovedUser = isAdminRole || context.is_active === APPROVED_STATUS;
     if (!isApprovedUser) return;
 
@@ -347,9 +344,9 @@ export default function DashboardPage() {
     setAvailabilitySaving(false);
   }, [allDayAvailable, availabilityDate, availabilitySlots]);
 
-  const isAdmin = context?.role === ADMIN_ROLE || context?.role === SUPERADMIN_ROLE;
-  const isStaff = context?.role === STAFF_ROLE;
-  const isSecurity = context?.role === SECURITY_ROLE;
+  const isAdmin = isElevated(context?.role);
+  const isStaff = isStaffRole(context?.role);
+  const isSecurity = isSecurityRole(context?.role);
 
   const snapshotItems = useMemo(() => {
     if (isAdmin && adminSnapshot) {

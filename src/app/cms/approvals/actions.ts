@@ -2,11 +2,10 @@
 
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
-import { loadContext } from "../permissions/actions";
+import { ROLES, isElevated } from "@/lib/roles";
+import { loadContext, canAccessPage } from "../permissions/actions";
 import { sendEmail } from "@/lib/mail";
 
-const ADMIN_ROLE = "admin";
-const SUPERADMIN_ROLE = "superadmin";
 const WALK_IN_EMAIL = "security@example.com";
 
 export type ApprovalStatus = "pending" | "approved" | "rejected";
@@ -50,16 +49,28 @@ async function getSupabaseClient() {
   );
 }
 
-async function assertApprovalsAccess() {
+async function assertViewAccess() {
   const context = await loadContext();
-  if (!context || (context.role !== ADMIN_ROLE && context.role !== SUPERADMIN_ROLE)) {
+  if (!context) {
+    throw new Error("Please sign in again to continue.");
+  }
+  const { allowed } = await canAccessPage(context.user_id, "/cms/approvals");
+  if (!allowed) {
     throw new Error("You are not authorized to access booking approvals.");
   }
   return context;
 }
 
+async function assertAdminAccess() {
+  const context = await assertViewAccess();
+  if (!isElevated(context.role)) {
+    throw new Error("Only admins can perform this action.");
+  }
+  return context;
+}
+
 export async function fetchApprovalBookings(date?: string, walkInOnly?: boolean): Promise<BookingApprovalRecord[]> {
-  await assertApprovalsAccess();
+  await assertViewAccess();
   const supabase = await getSupabaseClient();
 
   let query = supabase
@@ -88,7 +99,7 @@ export async function updateBookingApproval(
   id: number,
   status: Exclude<ApprovalStatus, "pending">
 ): Promise<void> {
-  await assertApprovalsAccess();
+  await assertAdminAccess();
   const supabase = await getSupabaseClient();
 
   const { error } = await supabase
@@ -189,7 +200,7 @@ export async function updateBookingVisitStatus(
   id: number,
   value: boolean
 ): Promise<void> {
-  await assertApprovalsAccess();
+  await assertAdminAccess();
   const supabase = await getSupabaseClient();
 
   const { error } = await supabase
@@ -205,7 +216,7 @@ export async function updateBookingVisitStatus(
 export async function cancelBookingApproval(
   id: number
 ): Promise<void> {
-  const context = await assertApprovalsAccess();
+  const context = await assertAdminAccess();
   const supabase = await getSupabaseClient();
 
   const { data: booking, error: updateError } = await supabase

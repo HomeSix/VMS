@@ -20,6 +20,7 @@ import {
   type RolePermissionRecord,
   type ContextData,
 } from "./actions";
+import { ROLES, isElevated } from "@/lib/roles";
 import { PROTECTED_PAGES } from "./constants";
 import { Button } from "@/components/ui/button";
 import {
@@ -61,9 +62,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { StatCard } from "@/components/ui/stat-card";
 import { Shield, Users, FileLock, Plus, Pencil, Trash2 } from "lucide-react";
 
-const ADMIN_ROLE = "admin";
-const SUPERADMIN_ROLE = "superadmin";
-const EXCLUDED_ROLES = ["admin", "pending", "rejected"];
+const EXCLUDED_ROLES: string[] = [ROLES.ADMIN, ROLES.PENDING, ROLES.REJECTED];
 const PENDING_STATUS = false;
 const APPROVED_STATUS = true;
 
@@ -92,7 +91,7 @@ export default function PermissionsPage() {
 
   useEffect(() => {
     if (loading) return;
-    if (context && context.role !== ADMIN_ROLE && context.role !== SUPERADMIN_ROLE) {
+    if (context && !isElevated(context.role)) {
       router.replace("/cms/dashboard");
     }
   }, [loading, context, router]);
@@ -113,7 +112,7 @@ export default function PermissionsPage() {
   );
 }
 
-  if (!context || (context.role !== ADMIN_ROLE && context.role !== SUPERADMIN_ROLE)) {
+  if (!context || !isElevated(context.role)) {
     return null;
   }
 
@@ -147,15 +146,15 @@ export default function PermissionsPage() {
         </TabsList>
 
         <TabsContent value="staff" className="mt-4">
-          <StaffAccessTab onError={setError} isSuperadmin={context.role === SUPERADMIN_ROLE} />
+          <StaffAccessTab onError={setError} isSuperadmin={context.role === ROLES.SUPERADMIN} />
         </TabsContent>
 
         <TabsContent value="roles" className="mt-4">
-          <RolesTab onError={setError} isSuperadmin={context.role === SUPERADMIN_ROLE} />
+          <RolesTab onError={setError} isSuperadmin={context.role === ROLES.SUPERADMIN} />
         </TabsContent>
 
         <TabsContent value="pages" className="mt-4">
-          <PagePermissionsTab onError={setError} isSuperadmin={context.role === SUPERADMIN_ROLE} />
+          <PagePermissionsTab onError={setError} isSuperadmin={context.role === ROLES.SUPERADMIN} />
         </TabsContent>
       </Tabs>
     </div>
@@ -177,7 +176,7 @@ function StaffAccessTab({ onError, isSuperadmin }: { onError: (msg: string | nul
     const term = search.trim().toLowerCase();
     const filtered = rows.filter((row) => {
       // Only superadmin can see and manage admin users
-      if (row.role_name === ADMIN_ROLE && !isSuperadmin) return false;
+      if (row.role_name === ROLES.ADMIN && !isSuperadmin) return false;
       
       if (!term) return true;
       const name = row.full_name?.toLowerCase() ?? "";
@@ -324,7 +323,7 @@ function StaffAccessTab({ onError, isSuperadmin }: { onError: (msg: string | nul
                 {filteredRows.map((row) => {
                   const displayName = row.full_name || row.email?.split("@")[0] || "Staff";
                   const isPending = row.is_active === PENDING_STATUS;
-                  const isRejected = row.role_name === "rejected";
+                  const isRejected = row.role_name === ROLES.REJECTED;
 
                   return (
                     <TableRow key={row.id}>
@@ -358,7 +357,7 @@ function StaffAccessTab({ onError, isSuperadmin }: { onError: (msg: string | nul
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="none">No role</SelectItem>
-                            {roles.filter((r) => !EXCLUDED_ROLES.includes(r.name) || (isSuperadmin && r.name === ADMIN_ROLE)).map((r) => (
+                            {roles.filter((r) => !EXCLUDED_ROLES.includes(r.name) || (isSuperadmin && r.name === ROLES.ADMIN)).map((r) => (
                               <SelectItem key={r.id} value={r.id}>
                                 {r.name}
                               </SelectItem>
@@ -460,7 +459,7 @@ function RolesTab({ onError, isSuperadmin }: { onError: (msg: string | null) => 
     try {
       const data = await fetchRoles();
       // Only superadmin can manage admin role
-      const filteredRoles = isSuperadmin ? data : data.filter(role => role.name !== ADMIN_ROLE);
+      const filteredRoles = isSuperadmin ? data : data.filter(role => role.name !== ROLES.ADMIN);
       setRoles(filteredRoles);
     } catch (err) {
       onError(err instanceof Error ? err.message : "Failed to fetch roles");

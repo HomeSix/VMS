@@ -41,13 +41,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { ROLES, isElevated, isSecurityRole } from "@/lib/roles";
 import { loadContext, type ContextData } from "../permissions/actions";
 import { ChevronDownIcon, ChevronUpIcon } from "lucide-react";
-
-const ADMIN_ROLE = "admin";
-const SUPERADMIN_ROLE = "superadmin";
-const SECURITY_ROLE = "security";
-const STAFF_ROLE = "staff";
 
 const DATE_FORMATTER = new Intl.DateTimeFormat("en-MY", {
   year: "numeric",
@@ -150,14 +146,14 @@ export default function BookingApprovalsPage() {
   }, [loadContextData]);
 
   useEffect(() => {
-    if (context?.role === SECURITY_ROLE) {
+    if (isSecurityRole(context?.role)) {
       setDate(new Date());
     }
   }, [context]);
 
   useEffect(() => {
     if (contextLoading) return;
-    if (!context || (context.role !== ADMIN_ROLE && context.role !== SUPERADMIN_ROLE)) {
+    if (!context) {
       router.replace("/cms/dashboard");
     }
   }, [contextLoading, context, router]);
@@ -176,7 +172,7 @@ export default function BookingApprovalsPage() {
   }, [dateValue, walkInOnly]);
 
   useEffect(() => {
-    if (!context || (context.role !== ADMIN_ROLE && context.role !== SUPERADMIN_ROLE)) return;
+    if (!context) return;
     void loadBookings();
   }, [context, loadBookings]);
 
@@ -188,7 +184,7 @@ export default function BookingApprovalsPage() {
       try {
         await updateBookingApproval(booking.id, status);
         setBookings((prev) => {
-          if (context?.role === ADMIN_ROLE) {
+          if (isElevated(context?.role)) {
             return prev.filter((item) => item.id !== booking.id);
           }
           return prev.map((item) =>
@@ -296,11 +292,14 @@ export default function BookingApprovalsPage() {
     );
   }
 
-  if (!context || (context.role !== ADMIN_ROLE && context.role !== SUPERADMIN_ROLE)) {
+  if (!context) {
     return null;
   }
 
-  const headerDescription = "Review pending bookings and decide whether to approve or reject them.";
+  const isAdmin = isElevated(context.role);
+  const headerDescription = isAdmin
+    ? "Review pending bookings and decide whether to approve or reject them."
+    : "View pending bookings.";
   const tableTitle = "Pending bookings";
 
   return (
@@ -443,7 +442,6 @@ export default function BookingApprovalsPage() {
                     const approvalStatus = getApprovalStatus(booking.book_status);
                     const isPending =
                       booking.book_status == null || booking.book_status === "pending";
-                    const isAdmin = context?.role === ADMIN_ROLE || context?.role === SUPERADMIN_ROLE;
                     const canApprove = isPending && isAdmin;
                     const canReject = isPending && isAdmin;
                     return (

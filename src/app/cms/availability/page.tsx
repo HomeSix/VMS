@@ -35,10 +35,9 @@ import {
 } from "@/components/ui/table";
 import { StatCard } from "@/components/ui/stat-card";
 import { createClient } from "@/lib/client";
+import { ROLES, isElevated } from "@/lib/roles";
 import { loadContext, type ContextData } from "../permissions/actions";
 import { ChevronDownIcon } from "lucide-react";
-
-const ADMIN_ROLE = "admin";
 
 type TeacherAvailabilityRow = {
   id: string;
@@ -106,7 +105,7 @@ export default function TeacherAvailabilityPage() {
 
   useEffect(() => {
     if (contextLoading) return;
-    if (!context || context.role !== ADMIN_ROLE) {
+    if (!context || !isElevated(context.role)) {
       router.replace("/cms/dashboard");
     }
   }, [contextLoading, context, router]);
@@ -203,7 +202,7 @@ export default function TeacherAvailabilityPage() {
   }, [dateValue, supabase]);
 
   useEffect(() => {
-    if (!context || context.role !== ADMIN_ROLE) return;
+    if (!context || !isElevated(context.role)) return;
     void loadTeachers();
   }, [context, loadTeachers]);
 
@@ -258,7 +257,7 @@ export default function TeacherAvailabilityPage() {
     );
   }
 
-  if (!context || context.role !== ADMIN_ROLE) {
+  if (!context || !isElevated(context.role)) {
     return null;
   }
 
