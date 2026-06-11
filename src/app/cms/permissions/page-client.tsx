@@ -62,7 +62,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { StatCard } from "@/components/ui/stat-card";
 import { Shield, Users, FileLock, Plus, Pencil, Trash2 } from "lucide-react";
 
-const EXCLUDED_ROLES: string[] = [ROLES.ADMIN, ROLES.PENDING, ROLES.REJECTED];
+const EXCLUDED_ROLES: string[] = [ROLES.ADMIN, ROLES.SUPERADMIN, ROLES.PENDING, ROLES.REJECTED];
 const PENDING_STATUS = false;
 const APPROVED_STATUS = true;
 

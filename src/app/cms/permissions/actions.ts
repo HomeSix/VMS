@@ -440,7 +440,6 @@ export async function canAccessPage(
 ): Promise<{ allowed: boolean; roleName: string }> {
   const supabase = await getSupabaseClient();
 
-  // Admin always has access
   const { data: userData } = await supabase
     .from("system_user")
     .select("role_id, is_active")
@@ -451,10 +450,7 @@ export async function canAccessPage(
     return { allowed: false, roleName: "" };
   }
 
-  if (!userData.is_active) {
-    return { allowed: false, roleName: "" };
-  }
-
+  // Resolve role name first so elevated roles bypass is_active check
   let roleName = "";
   if (userData.role_id) {
     const { data: roleInfo } = await supabase
@@ -465,8 +461,14 @@ export async function canAccessPage(
     roleName = roleInfo?.name ?? "";
   }
 
+  // Elevated roles (admin/superadmin) always have access, even if inactive
   if (isElevated(roleName)) {
     return { allowed: true, roleName };
+  }
+
+  // Non-elevated users must be active
+  if (!userData.is_active) {
+    return { allowed: false, roleName };
   }
 
   // No role assigned — deny non-dashboard pages

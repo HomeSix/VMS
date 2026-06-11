@@ -70,7 +70,7 @@ async function assertAdminAccess() {
 }
 
 export async function fetchApprovalBookings(date?: string, walkInOnly?: boolean): Promise<BookingApprovalRecord[]> {
-  await assertViewAccess();
+  const context = await assertViewAccess();
   const supabase = await getSupabaseClient();
 
   let query = supabase
@@ -79,6 +79,21 @@ export async function fetchApprovalBookings(date?: string, walkInOnly?: boolean)
       "id, full_name, phone_number, email, visit_reason, visit_date, start_time, end_time, plate_number, created_at, dial_code, book_teacher, status, book_status"
     )
     .or("book_status.is.null,book_status.eq.pending");
+
+  // Staff can only see their own bookings
+  if (context.role === ROLES.STAFF) {
+    const { data: userData } = await supabase
+      .from("system_user")
+      .select("full_name")
+      .eq("id", context.user_id)
+      .maybeSingle();
+
+    const staffName = userData?.full_name;
+    if (!staffName) {
+      return [];
+    }
+    query = query.eq("book_teacher", staffName);
+  }
 
   if (date) {
     query = query.eq("visit_date", date);
