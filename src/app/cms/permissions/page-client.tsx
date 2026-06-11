@@ -330,6 +330,7 @@ function StaffAccessTab({ onError }: { onError: (msg: string | null) => void }) 
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <img
+                            loading="lazy"
                             src={row.avatar_url || "/profile_default.png"}
                             alt={displayName}
                             className={`h-9 w-9 rounded-full border object-cover ${isRejected ? "opacity-50" : ""}`}
@@ -604,7 +605,7 @@ function RolesTab({ onError }: { onError: (msg: string | null) => void }) {
                         <Button
                           size="icon-sm"
                           variant="ghost"
-                          className="text-destructive hover:text-destructive"
+                          className="text-destructive"
                           onClick={() => handleDelete(role.id)}
                         >
                           <Trash2 className="h-4 w-4" />

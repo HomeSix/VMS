@@ -221,7 +221,6 @@ export default function Page() {
                     </div>
                 </div>
 
-                <style>{`@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&display=swap');`}</style>
             </div>
         </div>
     );

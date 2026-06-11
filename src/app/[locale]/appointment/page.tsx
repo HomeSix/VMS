@@ -341,11 +341,6 @@ export default function AppointmentPage() {
 								</div>
 				</div>
 
-				{/* <div className="mt-4 text-xs text-[#666] flex flex-wrap gap-4">
-					<span>{t.appointmentBooked}</span>
-					<span>{t.appointmentAvailable}</span>
-					<span>{t.appointmentUnavailable}</span>
-				</div> */}
 			</div>
 		</div>
 	);

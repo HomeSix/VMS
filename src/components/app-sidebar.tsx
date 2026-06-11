@@ -3,26 +3,11 @@ import {
   FileText,
   Users,
   UserCheck,
-  Settings,
   LogOut,
   ChevronRight,
-  FolderOpen,
   Calendar,
-  Mail,
-  BarChart3,
-  Shield,
-  Database,
-  Globe,
-  HelpCircle,
-  Package,
-  ShoppingCart,
-  CreditCard,
-  TrendingUp,
-  Archive,
-  Trash2,
   Bell,
-  Search,
-  Plus,
+  HelpCircle,
 } from "lucide-react";
 
 import {
@@ -44,48 +29,23 @@ import {
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSub,
-  DropdownMenuSubTrigger,
-  DropdownMenuSubContent,
-  DropdownMenuSeparator,
-  DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
-
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-
-import { ChevronDown } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useRouter, usePathname } from "next/navigation";
 import { createClient } from "@/lib/client";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import menuItems from "@/data/menu-items.json";
 
-const iconMap: { [key: string]: any } = {
+const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   LayoutDashboard,
   FileText,
   Users,
   UserCheck,
-  Settings,
-  ChevronRight,
-  FolderOpen,
   Calendar,
-  Mail,
-  BarChart3,
-  Shield,
-  Database,
-  Globe,
-  HelpCircle,
-  Package,
-  ShoppingCart,
-  CreditCard,
-  TrendingUp,
-  Archive,
-  Trash2,
   Bell,
-  Search,
-  Plus,
+  HelpCircle,
 };
 
 const SECURITY_ROLE = "security";
@@ -105,7 +65,7 @@ export function AppSidebar({ userRole }: { userRole?: string }) {
   const collapsed = state === "collapsed";
   const router = useRouter();
   const pathname = usePathname();
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const [canAccessPermissions, setCanAccessPermissions] = useState(false);
 
   
@@ -300,6 +260,7 @@ export function AppSidebar({ userRole }: { userRole?: string }) {
             src="/stek_logo.png"
             alt="STEK Logo"
             className="h-12 w-auto object-contain"
+            loading="lazy"
           />
         </div>
 

@@ -62,20 +62,13 @@ export async function createBooking(input: CreateBookingInput) {
 
   if (input.book_teacher) {
     try {
-      console.log(`Looking up teacher: "${input.book_teacher}"`)
       const { data: teacher, error: lookupError } = await supabase
         .from("system_user")
         .select("email")
         .eq("full_name", input.book_teacher)
         .maybeSingle()
 
-      if (lookupError) {
-        console.error("Teacher lookup error:", lookupError)
-      }
-
-      if (teacher?.email) {
-        console.log(`Found teacher email: ${teacher.email}. Sending notification...`)
-        console.log(`SMTP configured: host=${process.env.SMTP_HOST}, user=${process.env.SMTP_USER}, from=${process.env.SMTP_FROM}`)
+      if (!lookupError && teacher?.email) {
         await sendEmail({
           to: teacher.email,
           subject: `New Booking from ${input.full_name}`,
@@ -93,12 +86,9 @@ export async function createBooking(input: CreateBookingInput) {
             </table>
           `,
         })
-        console.log("Email sent successfully")
-      } else {
-        console.error(`Teacher not found in system_user with full_name: "${input.book_teacher}"`)
       }
-    } catch (emailErr) {
-      console.error("Failed to send email notification:", emailErr)
+    } catch {
+      // Email notification is non-critical; booking is already created
     }
   }
 

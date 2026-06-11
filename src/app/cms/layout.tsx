@@ -135,7 +135,11 @@ export default function CmsLayout({
       setNotifItems(data ?? []);
     };
     void loadData();
-    const interval = setInterval(loadData, 30000);
+    const interval = setInterval(() => {
+      if (document.visibilityState === "visible") {
+        void loadData();
+      }
+    }, 30000);
     return () => clearInterval(interval);
   }, [supabase, userRole]);
 
