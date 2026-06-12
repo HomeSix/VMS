@@ -733,7 +733,7 @@ export default function DashboardPage() {
                   onCheckedChange={handleAllDayChange}
                 />
                 <div>
-                  <p className="text-sm font-medium">No unavailable times</p>
+                  <p className="text-sm font-medium">Available All Day</p>
                   <p className="text-xs text-muted-foreground">
                     Turn off to mark specific slots as unavailable.
                   </p>
