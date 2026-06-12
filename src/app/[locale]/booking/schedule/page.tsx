@@ -299,6 +299,7 @@ export default function BookingSchedulePage() {
                 selected={date}
                 captionLayout="dropdown"
                 defaultMonth={date}
+                fromDate={new Date()}
                 onSelect={(nextDate) => {
                   setDate(nextDate)
                   setSelectedRange(null)

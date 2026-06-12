@@ -356,14 +356,14 @@ export default function TimeTablePage() {
 								}
 							/>
 							<PopoverContent className="w-auto overflow-hidden p-0" align="start">
-								<Calendar
+<Calendar
 									mode="single"
 									selected={date}
 									captionLayout="dropdown"
 									defaultMonth={date}
 									onSelect={(nextDate) => {
 										setDate(nextDate)
-										setDateOpen(false)
+										setDateOpen(false);
 									}}
 								/>
 							</PopoverContent>

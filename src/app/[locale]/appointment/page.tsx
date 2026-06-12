@@ -233,6 +233,7 @@ export default function AppointmentPage() {
 									selected={date}
 									captionLayout="dropdown"
 									defaultMonth={date}
+									fromDate={new Date()}
 									onSelect={(nextDate) => {
 										setDate(nextDate)
 										setDateOpen(false)
