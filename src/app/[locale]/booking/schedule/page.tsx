@@ -51,7 +51,7 @@ function formatDateForDisplay(date: Date, locale: Locale) {
   }).format(date)
 }
 
-const START_MINUTE = 8 * 60
+const START_MINUTE = 7.5 * 60
 const END_MINUTE = 17 * 60
 const SLOT_STEP = 30
 const TIME_SLOTS = Array.from({ length: (END_MINUTE - START_MINUTE) / SLOT_STEP }, (_, index) =>

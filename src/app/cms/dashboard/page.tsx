@@ -43,7 +43,7 @@ const KpiTrendsChart = dynamic(() => import("@/components/kpi-trends-chart").the
 
 const APPROVED_STATUS = true;
 
-const OPEN_START = 8 * 60;
+const OPEN_START = 7.5 * 60;
 const OPEN_END = 16 * 60 + 30;
 const SLOT_STEP = 30;
 
@@ -722,7 +722,7 @@ export default function DashboardPage() {
             <div className="h-1 w-10 rounded-full bg-amber-500/40 mb-1" />
             <CardTitle>My availability</CardTitle>
             <CardDescription>
-              Mark times you are NOT available (08:00 - 16:30). All unmarked slots are available.
+              Mark times you are NOT available (07:30 - 16:30). All unmarked slots are available.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">

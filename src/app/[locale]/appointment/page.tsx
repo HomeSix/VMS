@@ -12,7 +12,7 @@ import { createClient } from "@/lib/client";
 import { translations, type Locale } from "@/lib/translations";
 import { ChevronDownIcon } from "lucide-react";
 
-const OPEN_START = 8 * 60;
+const OPEN_START = 7.5 * 60;
 const OPEN_END = 16 * 60 + 30;
 const SLOT_STEP = 30;
 
